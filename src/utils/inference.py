@@ -5,14 +5,14 @@ import pickle
 from datetime import datetime
 
 # ── Load saved models ──────────────────────────────────────────────
-with open('demand_forecast_model.pkl', 'rb') as f:
+with open('models/demand_forecast_model.pkl', 'rb') as f:
     model_tuned = pickle.load(f)
 
-with open('demand_scaler.pkl', 'rb') as f:
+with open('models/demand_scaler.pkl', 'rb') as f:
     scaler = pickle.load(f)
 
 # ── Load your dataset (needed to build lag features) ───────────────
-store_sales = pd.read_csv('store_sale.csv')
+store_sales = pd.read_csv('data/store_sale.csv')
 store_sales = store_sales.drop(['store', 'item'], axis=1)
 store_sales['date'] = pd.to_datetime(store_sales['date'])
 store_sales['date'] = store_sales['date'].dt.to_period('M')
