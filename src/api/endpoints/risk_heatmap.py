@@ -16,6 +16,7 @@ router = APIRouter()
 
 # Initialize service
 risk_service = RiskService()
+logger = logging.getLogger(__name__)
 
 @router.get("/risk-heatmap", response_model=RiskHeatmapResponse)
 async def get_risk_heatmap():

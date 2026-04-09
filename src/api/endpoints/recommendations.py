@@ -16,6 +16,7 @@ router = APIRouter()
 
 # Initialize service
 recommendation_service = RecommendationService()
+logger = logging.getLogger(__name__)
 
 @router.get("/recommendations", response_model=RecommendationResponse)
 async def get_current_recommendations():

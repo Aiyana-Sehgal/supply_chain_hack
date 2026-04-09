@@ -16,6 +16,7 @@ router = APIRouter()
 
 # Initialize service
 cost_service = CostService()
+logger = logging.getLogger(__name__)
 
 @router.get("/cost-impact", response_model=CostImpactResponse)
 async def get_cost_impact(action: str = Query(..., description="Action to analyze")):

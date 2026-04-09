@@ -11,14 +11,15 @@ End-to-end orchestrator for Layers 1-5:
 """
 
 import os
-import sys
 from typing import Dict, Any, Optional, Tuple
 from datetime import datetime
 import json
+import numpy as np
+import pandas as pd
 
 # Import all layers
 from ..core import build_layer1_dataset, build_layer2_dataset, build_layer3_dataset, SupplyChainAgent, get_recommendation
-# from ..scenarios import ScenarioSimulator, ScenarioInput  # Commented out to avoid circular import
+from ..scenarios.scenario_simulator import ScenarioSimulator, ScenarioInput
 from ..xai import EnhancedXAI, create_enhanced_xai
 
 
@@ -66,7 +67,7 @@ class SupplyChainPipeline:
         try:
             # Load RL agent
             self.rl_agent = SupplyChainAgent()
-            self.rl_agent.load('supply_chain_agent.pkl')
+            self.rl_agent.load('models/supply_chain_agent.pkl')
             if self.verbose:
                 print("RL agent loaded successfully")
         except Exception as e:
@@ -151,7 +152,7 @@ class SupplyChainPipeline:
             if self.verbose:
                 print("\n[Layer 5b] Explainable AI...")
             
-            explanations = self.xai_explainer.generate_comprehensive_explanation(
+            explanations = self.enhanced_xai.generate_comprehensive_explanation(
                 state=current_state,
                 action=recommendation['action'],
                 confidence=recommendation['confidence']
@@ -232,11 +233,11 @@ class SupplyChainPipeline:
             scenario_results = self.scenario_simulator.run_scenario_simulation(scenario)
             
             # Generate XAI explanations for scenario
-            scenario_explanations = self.xai_explainer.explain_scenario_impact(scenario_results)
+            scenario_explanations = self.enhanced_xai.explain_scenario_impact(scenario_results)
             
             # Generate recommendation explanation
             recommendation = scenario_results['recommendations']
-            rec_explanation = self.xai_explainer.explain_recommendation(
+            rec_explanation = self.enhanced_xai.explain_recommendation(
                 state=scenario_results['state_details'],
                 action=recommendation['action'],
                 confidence=recommendation['confidence']
@@ -284,7 +285,7 @@ class SupplyChainPipeline:
             self.run_full_pipeline()
         
         current_state = self.layer3_bundle['layer3_state']
-        risk_explanations = self.xai_explainer.explain_risk_score(current_state)
+        risk_explanations = self.enhanced_xai.explain_risk_score(current_state)
         
         return {
             'current_state': current_state,

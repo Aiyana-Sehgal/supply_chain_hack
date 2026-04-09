@@ -51,7 +51,7 @@ class ScenarioSimulator:
         # Load models
         try:
             self.rl_agent = SupplyChainAgent()
-            self.rl_agent.load('supply_chain_agent.pkl')
+            self.rl_agent.load('models/supply_chain_agent.pkl')
             print("Scenario Simulator: RL agent loaded successfully")
         except Exception as e:
             print(f"Warning: Could not load RL agent: {e}")

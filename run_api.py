@@ -36,13 +36,10 @@ def main():
     print("=" * 80)
     
     try:
-        # Import and run the FastAPI app
-        from src.api.main import app
         import uvicorn
-        
-        # Run the server
+
         uvicorn.run(
-            app,
+            "src.api.main:app",
             host="0.0.0.0",
             port=8000,
             reload=True,

@@ -1,10 +1,19 @@
 import os
 import random
 import requests
+import time
 from datetime import timedelta
 
 import numpy as np
 import pandas as pd
+from dotenv import load_dotenv
+
+load_dotenv()
+
+_LIVE_SIGNAL_CACHE = {
+    'weather': {},
+    'news': {}
+}
 
 
 def load_historical_sales(data_path='data/store_sale.csv'):
@@ -97,6 +106,28 @@ def fetch_weatherapi_history(city, date, api_key):
     }
 
 
+def fetch_weatherapi_current(city, api_key):
+    """Fetch current weather for a city from WeatherAPI.com."""
+    endpoint = 'http://api.weatherapi.com/v1/current.json'
+    params = {
+        'key': api_key,
+        'q': city,
+        'aqi': 'no'
+    }
+    response = requests.get(endpoint, params=params, timeout=20)
+    response.raise_for_status()
+    data = response.json()
+    current = data.get('current', {})
+    return {
+        'condition': current.get('condition', {}).get('text', ''),
+        'avgtemp_c': current.get('temp_c', 0.0),
+        'maxwind_kph': current.get('wind_kph', 0.0),
+        'totalprecip_mm': current.get('precip_mm', 0.0),
+        'daily_chance_of_rain': 0,
+        'daily_chance_of_snow': 0
+    }
+
+
 def score_weather_observation(observation):
     """Convert real weather data into a disruption score between 0 and 1."""
     condition = str(observation.get('condition', '')).lower()
@@ -124,7 +155,7 @@ def score_weather_observation(observation):
 
 def get_weather_signals_for_cities(city_list, start_date, end_date, weather_api_key=None):
     """Build weather disruption signals for the selected cities."""
-    dates = pd.date_range(start=start_date, end=end_date, freq='ME')
+    dates = pd.date_range(start=start_date, end=end_date, freq='M')
     rows = []
     for city in city_list:
         for date in dates:
@@ -156,6 +187,40 @@ def get_weather_signals_for_cities(city_list, start_date, end_date, weather_api_
     return pd.DataFrame(rows)
 
 
+def get_live_weather_snapshot(city_list, weather_api_key=None, cache_ttl=900):
+    """Fetch and cache current city weather signals for the latest backend state."""
+    if not weather_api_key:
+        return None
+
+    cache_key = tuple(city_list)
+    now = time.time()
+    cached = _LIVE_SIGNAL_CACHE['weather'].get(cache_key)
+    if cached and now - cached['timestamp'] < cache_ttl:
+        return cached['data']
+
+    rows = []
+    for city in city_list:
+        try:
+            observation = fetch_weatherapi_current(city, weather_api_key)
+            rows.append({
+                'city': city,
+                'weather_description': observation['condition'],
+                'weather_disruption_score': score_weather_observation(observation)
+            })
+        except Exception:
+            continue
+
+    if not rows:
+        return None
+
+    live_df = pd.DataFrame(rows)
+    _LIVE_SIGNAL_CACHE['weather'][cache_key] = {
+        'timestamp': now,
+        'data': live_df
+    }
+    return live_df
+
+
 def score_news_disruption(headlines):
     """Score NewsData.io headlines into a disruption signal between 0 and 1."""
     scores = []
@@ -179,9 +244,7 @@ def fetch_newsdata_io(api_key, query='india disruption', from_date=None, to_date
         'apikey': api_key,
         'q': query,
         'language': 'en',
-        'country': 'in',
-        'page': 0,
-        'page_size': page_size
+        'country': 'in'
     }
     if from_date is not None:
         params['from_date'] = from_date.strftime('%Y-%m-%d')
@@ -189,19 +252,57 @@ def fetch_newsdata_io(api_key, query='india disruption', from_date=None, to_date
         params['to_date'] = to_date.strftime('%Y-%m-%d')
 
     headlines = []
+    next_page = None
+    date_retry_done = False
+
     while True:
-        response = requests.get(endpoint, params=params, timeout=20)
+        request_params = params.copy()
+        if next_page:
+            request_params['page'] = next_page
+
+        response = requests.get(endpoint, params=request_params, timeout=20)
+        if response.status_code == 422 and not date_retry_done and ('from_date' in params or 'to_date' in params):
+            params.pop('from_date', None)
+            params.pop('to_date', None)
+            date_retry_done = True
+            next_page = None
+            continue
         response.raise_for_status()
         data = response.json()
 
         for article in data.get('results', []):
             headlines.append(article.get('title') or article.get('description') or '')
 
-        if data.get('nextPage'):
-            params['page'] += 1
-        else:
+        next_page = data.get('nextPage')
+        if not next_page:
             break
 
+    return headlines
+
+
+def get_live_news_headlines(api_key, query='india disruption', lookback_days=7, cache_ttl=900):
+    """Fetch and cache recent India-focused NewsData.io headlines."""
+    if not api_key:
+        return None
+
+    cache_key = (query, lookback_days)
+    now = time.time()
+    cached = _LIVE_SIGNAL_CACHE['news'].get(cache_key)
+    if cached and now - cached['timestamp'] < cache_ttl:
+        return cached['data']
+
+    to_date = pd.Timestamp.now().normalize()
+    from_date = to_date - pd.Timedelta(days=lookback_days)
+    headlines = fetch_newsdata_io(
+        api_key,
+        query=query,
+        from_date=from_date,
+        to_date=to_date
+    )
+    _LIVE_SIGNAL_CACHE['news'][cache_key] = {
+        'timestamp': now,
+        'data': headlines
+    }
     return headlines
 
 
@@ -216,6 +317,9 @@ def build_layer1_dataset(
     news_query='india disruption'
 ):
     """Collect and merge Layer 1 data sources."""
+    news_api_key = news_api_key or os.getenv('NEWSDATA_API_KEY')
+    weather_api_key = weather_api_key or os.getenv('WEATHERAPI_KEY')
+
     monthly_sales = load_historical_sales(sales_path)
     supervised_sales = build_sales_supervised(monthly_sales)
 
@@ -228,15 +332,30 @@ def build_layer1_dataset(
     if weather_end is None:
         weather_end = monthly_sales['date'].max()
 
-    weather_signals = get_weather_signals_for_cities(city_list, weather_start, weather_end, weather_api_key=weather_api_key)
+    weather_signals = get_weather_signals_for_cities(city_list, weather_start, weather_end, weather_api_key=None)
+
+    live_weather_snapshot = get_live_weather_snapshot(city_list, weather_api_key=weather_api_key)
+    if live_weather_snapshot is not None and not weather_signals.empty:
+        latest_date = weather_signals['date'].max()
+        weather_signals = weather_signals[weather_signals['date'] != latest_date]
+        live_weather_rows = live_weather_snapshot.copy()
+        live_weather_rows['date'] = latest_date
+        weather_signals = pd.concat([weather_signals, live_weather_rows], ignore_index=True)
+
     weather_summary = (weather_signals.groupby('date', as_index=False)
                        ['weather_disruption_score']
                        .mean()
                        .rename(columns={'weather_disruption_score': 'weather_disruption_score'}))
 
     if news_api_key:
-        headlines = fetch_newsdata_io(news_api_key, query=news_query, from_date=weather_start, to_date=weather_end)
+        try:
+            headlines = get_live_news_headlines(news_api_key, query=news_query)
+        except Exception:
+            headlines = None
     else:
+        headlines = None
+
+    if not headlines:
         headlines = [
             'Regional transport strike causes shipment delay',
             'Heavy flood warnings in coastal cities',

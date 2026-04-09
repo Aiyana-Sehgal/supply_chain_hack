@@ -149,7 +149,7 @@ class CacheManager:
     def generate_cache_key(self, state: Dict[str, Any], action: str, confidence: float) -> str:
         """Generate cache key from input parameters"""
         # Create a deterministic representation of the state
-        state_items = sorted(state.items())
+        state_items = sorted((key, self._json_safe(value)) for key, value in state.items())
         state_str = json.dumps(state_items, sort_keys=True, separators=(',', ':'))
         
         # Create hash
@@ -160,9 +160,15 @@ class CacheManager:
     
     def generate_state_hash(self, state: Dict[str, Any]) -> str:
         """Generate hash for state comparison"""
-        state_items = sorted(state.items())
+        state_items = sorted((key, self._json_safe(value)) for key, value in state.items())
         state_str = json.dumps(state_items, sort_keys=True, separators=(',', ':'))
         return hashlib.md5(state_str.encode()).hexdigest()
+
+    def _json_safe(self, value: Any) -> Any:
+        """Convert state values to deterministic JSON-safe primitives."""
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            return value
+        return str(value)
     
     def get(self, state: Dict[str, Any], action: str, confidence: float) -> Optional[CacheEntry]:
         """Get cached explanation if available and not expired"""

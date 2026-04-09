@@ -114,6 +114,7 @@ class RiskService:
                 risk_level=self._get_risk_level(supplier_risk),
                 inventory_ratio=inventory_ratio,
                 days_to_stockout=days_to_stockout,
+                disruption_signal=np.random.uniform(0.1, 0.9),
                 last_updated=current_time
             ))
         

@@ -10,6 +10,7 @@ from typing import Dict, List, Any, Optional
 from datetime import datetime, timedelta
 import numpy as np
 import uuid
+import random
 
 from ..models import RiskAlert, RiskAlertsResponse, AlertSeverity
 
@@ -166,6 +167,7 @@ class AlertService:
         # Stockout imminent alert
         if days_to_stockout <= self.risk_thresholds['days_to_stockout']:
             severity = AlertSeverity.CRITICAL if days_to_stockout <= 3 else AlertSeverity.HIGH
+            stockout_threshold_score = 1.0 - (self.risk_thresholds['days_to_stockout'] / 30.0)
             
             alert = RiskAlert(
                 alert_id=self._generate_alert_id(),
@@ -174,7 +176,7 @@ class AlertService:
                 title="Stockout Imminent Alert",
                 message=f"Stockout expected in {days_to_stockout:.1f} days",
                 risk_score=1.0 - (days_to_stockout / 30),  # Higher risk for fewer days
-                threshold=self.risk_thresholds['days_to_stockout'],
+                threshold=stockout_threshold_score,
                 created_at=datetime.now(),
                 resolved=False
             )
@@ -227,7 +229,7 @@ class AlertService:
         # Generate some historical alerts
         for i in range(5):
             created_time = current_time - timedelta(hours=i*2)
-            severity = np.random.choice(list(AlertSeverity))
+            severity = random.choice(list(AlertSeverity))
             alert_type = np.random.choice(self.alert_types)
             
             alert = RiskAlert(
@@ -291,6 +293,7 @@ class AlertService:
             
             # Create response
             response = RiskAlertsResponse(
+                timestamp=datetime.now(),
                 alerts=active_alerts,
                 total_alerts=len(active_alerts),
                 critical_alerts=critical_alerts,

@@ -12,9 +12,11 @@ from datetime import datetime
 import logging
 import sys
 import os
+from dotenv import load_dotenv
 
 # Add project root to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

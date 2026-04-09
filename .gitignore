@@ -1,0 +1,79 @@
+# Python environment
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.cache/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb_checkpoints
+
+# VS Code
+.vscode/
+
+# Environment variables
+.env
+.env.*
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# Generated files
+*.sqlite3
+*.db
+*.db-journal
+
+# Cache and temporary files
+cache/
+*.tmp
+*.temp
+
+# Byte-compiled / optimized / DLL files
+*.pyd
+*.so
+*.dll
+
+# IDE files
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Python virtual environments created by other tools
+.python-version
+
+# Model artifacts and large binaries
+*.pkl
+*.joblib
+*.h5
+
+# Ignore system files
+Thumbs.db

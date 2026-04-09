@@ -86,15 +86,27 @@ class RecommendationService:
             from src.xai import create_enhanced_xai
             
             xai = create_enhanced_xai(enable_enhancement=True)
+            xai_state = self._sanitize_state_for_xai(state)
             
             # Generate enhanced explanation
-            enhanced_exp = xai.explain_recommendation(state, action, 85.0)
+            enhanced_exp = xai.explain_recommendation(xai_state, action, 85.0)
             
             return enhanced_exp.get('rationale', base_explanation)
             
         except Exception as e:
             logger.error(f"Error getting enhanced explanation: {e}")
             return base_explanation
+
+    def _sanitize_state_for_xai(self, state: Dict[str, Any]) -> Dict[str, float]:
+        """Limit XAI inputs to the core numeric fields it actually uses."""
+        return {
+            'predicted_demand': float(state.get('predicted_demand', 0.0)),
+            'current_inventory': float(state.get('current_inventory', 0.0)),
+            'supplier_risk_score': float(state.get('supplier_risk_score', 0.0)),
+            'disruption_signal': float(state.get('disruption_signal', 0.0)),
+            'days_to_stockout': float(state.get('days_to_stockout', 0.0)),
+            'composite_risk_score': float(state.get('composite_risk_score', 0.0)),
+        }
     
     def _generate_explanation(self, state: Dict[str, Any], action: str, confidence: float) -> RecommendationExplanation:
         """Generate detailed explanation for recommendation"""
@@ -205,6 +217,7 @@ class RecommendationService:
             
             # Create response
             response = RecommendationResponse(
+                timestamp=datetime.now(),
                 action=action,
                 confidence=confidence,
                 explanation=explanation,

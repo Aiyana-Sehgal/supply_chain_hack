@@ -31,19 +31,19 @@ from .xai import (
 )
 
 # Scenario Analysis
-# from .scenarios import (
-#     DigitalTwin,
-#     create_digital_twin,
-#     ScenarioSimulator,
-#     ScenarioInput
-# )  # Commented out to avoid circular import
+from .scenarios import (
+    DigitalTwin,
+    create_digital_twin,
+    ScenarioSimulator,
+    ScenarioInput
+)
 
 # Utilities
-# from .utils import (
-#     SupplyChainPipeline,
-#     quick_analysis,
-#     predict_next_month_demand
-# )  # Commented out to avoid circular import
+from .utils import (
+    SupplyChainPipeline,
+    quick_analysis,
+    predict_next_month_demand
+)
 
 __version__ = "1.0.0"
 __author__ = "Supply Chain Intelligence Team"

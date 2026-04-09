@@ -8,6 +8,7 @@ for business context and executive-friendly language.
 from .ollama_client import OllamaClient, OllamaConfig, create_ollama_client
 from .cache_manager import CacheManager, CacheConfig, create_cache_manager
 from .enhanced_explainer import EnhancedXAI, ExplanationResult, EnhancedXAIConfig, create_enhanced_xai
+from .xai_explainer import XAIExplainer
 
 __all__ = [
     'OllamaClient',
@@ -17,6 +18,7 @@ __all__ = [
     'CacheConfig',
     'create_cache_manager',
     'EnhancedXAI',
+    'XAIExplainer',
     'ExplanationResult',
     'EnhancedXAIConfig',
     'create_enhanced_xai'

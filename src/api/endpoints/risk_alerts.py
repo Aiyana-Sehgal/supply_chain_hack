@@ -16,6 +16,7 @@ router = APIRouter()
 
 # Initialize service
 alert_service = AlertService()
+logger = logging.getLogger(__name__)
 
 @router.get("/risk-alerts", response_model=RiskAlertsResponse)
 async def get_risk_alerts():

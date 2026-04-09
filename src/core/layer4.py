@@ -305,12 +305,20 @@ def get_recommendation(state, agent=None):
     """
     if agent is None:
         agent = SupplyChainAgent()
-        agent.load('models/supply_chain_agent.pkl')
+        try:
+            agent.load('models/supply_chain_agent.pkl')
+        except Exception as exc:
+            print(f"Warning: Could not load RL agent, using deterministic fallback: {exc}")
+            return _get_fallback_recommendation(state)
 
     agent.epsilon = 0.0
 
     # Pure Q-Learning decision (no rule-based layer)
-    action_id = agent.choose_action(state, training=False)
+    try:
+        action_id = agent.choose_action(state, training=False)
+    except Exception as exc:
+        print(f"Warning: RL inference failed, using deterministic fallback: {exc}")
+        return _get_fallback_recommendation(state)
     action_name = agent.actions[action_id]
 
     # EXPLANATION ENGINE
@@ -403,4 +411,42 @@ def get_recommendation(state, agent=None):
         "confidence": confidence,
         "explanation": explanation,
         "state": state
+    }
+
+
+def _get_fallback_recommendation(state):
+    """Deterministic fallback when the serialized RL agent cannot be loaded."""
+    demand = max(state["predicted_demand"], 1)
+    inventory = state["current_inventory"]
+    ratio = inventory / demand
+    supplier_risk = state["supplier_risk_score"]
+    disruption_signal = state["disruption_signal"]
+    days_to_stockout = state["days_to_stockout"]
+
+    if days_to_stockout <= 3 or ratio < 0.02:
+        action_name = "emergency_restock"
+        confidence = 82.0
+        reason = "critical inventory exposure and near-term stockout risk"
+    elif supplier_risk > 0.8:
+        action_name = "switch_supplier"
+        confidence = 76.0
+        reason = "supplier failure risk is the strongest driver"
+    elif disruption_signal > 0.7:
+        action_name = "reroute_shipment"
+        confidence = 72.0
+        reason = "transport and disruption signals are elevated"
+    elif ratio < 0.10 or days_to_stockout <= 14:
+        action_name = "reorder_stock"
+        confidence = 74.0
+        reason = "inventory buffer is below the preferred operating threshold"
+    else:
+        action_name = "do_nothing"
+        confidence = 60.0
+        reason = "current state is within acceptable operating bands"
+
+    return {
+        "action": action_name,
+        "confidence": confidence,
+        "explanation": f"Fallback decision selected because {reason}.",
+        "state": state,
     }

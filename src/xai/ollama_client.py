@@ -24,7 +24,7 @@ class OllamaConfig:
     """Configuration for Ollama client"""
     host: str = "localhost"
     port: int = 11434
-    model: str = "llama3.1:8b"  # Default to 8B parameter model
+    model: str = "llama3.1:latest"
     timeout: int = 30
     max_retries: int = 3
     retry_delay: float = 1.0
@@ -286,7 +286,7 @@ ENHANCED EXPLANATION:"""
 
 # Factory function for easy instantiation
 def create_ollama_client(host: str = "localhost", port: int = 11434, 
-                        model: str = "llama3.1:8b") -> OllamaClient:
+                        model: str = "llama3.1:latest") -> OllamaClient:
     """Create Ollama client with default configuration"""
     config = OllamaConfig(host=host, port=port, model=model)
     return OllamaClient(config)

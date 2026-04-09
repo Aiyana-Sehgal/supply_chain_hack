@@ -20,13 +20,19 @@ import xgboost as xgb
 from sklearn.preprocessing import MinMaxScaler
 from datetime import datetime
 from typing import Dict, Any, Tuple, Optional
+from pathlib import Path
 
 # Import custom layers
-import sys
-import os
 sys.path.append(os.path.dirname(__file__))
 from layer1 import build_layer1_dataset
 from layer2 import build_layer2_dataset
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+MODELS_DIR = PROJECT_ROOT / 'models'
+DATA_DIR = PROJECT_ROOT / 'data'
+MODEL_JSON_PATH = MODELS_DIR / 'demand_forecast_model.json'
+MODEL_PKL_PATH = MODELS_DIR / 'demand_forecast_model.pkl'
+SCALER_PKL_PATH = MODELS_DIR / 'demand_scaler.pkl'
 
 
 def build_lag_features(series, n_lags=12):
@@ -38,14 +44,40 @@ def build_lag_features(series, n_lags=12):
     return df
 
 
+def rebuild_demand_scaler(sales_path='data/store_sale.csv', n_lags=12):
+    """Rebuild the MinMaxScaler from the training data when pickle compatibility fails."""
+    store_sales = pd.read_csv(PROJECT_ROOT / sales_path)
+    store_sales = store_sales.drop(['store', 'item'], axis=1)
+    store_sales['date'] = pd.to_datetime(store_sales['date'])
+    store_sales['date'] = store_sales['date'].dt.to_period('M')
+    monthly_sales = store_sales.groupby('date').sum().reset_index()
+    monthly_sales['date'] = monthly_sales['date'].dt.to_timestamp()
+    monthly_sales['sales_diff'] = monthly_sales['sales'].diff()
+    monthly_sales = monthly_sales.dropna().reset_index(drop=True)
+
+    supervised = build_lag_features(monthly_sales['sales_diff'], n_lags=n_lags)
+    feature_columns = ['sales_diff'] + [f'month_{i}' for i in range(1, n_lags + 1)]
+    scaler = MinMaxScaler(feature_range=(-1, 1))
+    scaler.fit(supervised[feature_columns])
+    return scaler
+
+
 def load_demand_models():
     """Load trained demand forecast model and scaler"""
     try:
-        with open('models/demand_forecast_model.pkl', 'rb') as f:
-            model_tuned = pickle.load(f)
+        if MODEL_JSON_PATH.exists():
+            model_tuned = xgb.Booster()
+            model_tuned.load_model(str(MODEL_JSON_PATH))
+        else:
+            with open(MODEL_PKL_PATH, 'rb') as f:
+                model_tuned = pickle.load(f)
         
-        with open('models/demand_scaler.pkl', 'rb') as f:
-            scaler = pickle.load(f)
+        try:
+            with open(SCALER_PKL_PATH, 'rb') as f:
+                scaler = pickle.load(f)
+        except Exception as scaler_error:
+            print(f"Warning: Could not load serialized scaler, rebuilding from sales history: {scaler_error}")
+            scaler = rebuild_demand_scaler()
         
         print("Demand forecast model loaded successfully")
         return model_tuned, scaler
@@ -62,7 +94,7 @@ def generate_demand_forecast(model_tuned, scaler, n_months=3):
     """Generate demand forecast for next N months"""
     try:
         # Load and prepare sales data
-        store_sales = pd.read_csv('data/store_sale.csv')
+        store_sales = pd.read_csv(DATA_DIR / 'store_sale.csv')
         store_sales = store_sales.drop(['store', 'item'], axis=1)
         store_sales['date'] = pd.to_datetime(store_sales['date'])
         store_sales['date'] = store_sales['date'].dt.to_period('M')
@@ -202,8 +234,8 @@ def build_layer3_dataset(sales_path='data/store_sale.csv',
     try:
         layer1_bundle = build_layer1_dataset(
             sales_path=sales_path,
-            news_api_key=news_api_key,
-            weather_api_key=weather_api_key
+            news_api_key=news_api_key or os.getenv('NEWSDATA_API_KEY'),
+            weather_api_key=weather_api_key or os.getenv('WEATHERAPI_KEY')
         )
         if verbose:
             print("Layer 1 complete")

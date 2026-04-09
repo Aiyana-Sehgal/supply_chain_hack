@@ -11,9 +11,10 @@ from dataclasses import dataclass
 import json
 from datetime import datetime
 
-from layer5a.scenario_simulator import ScenarioSimulator, ScenarioInput, SCENARIO_TEMPLATES
-from layer5b.xai_explainer import XAIExplainer
-from pipeline import SupplyChainPipeline
+from .scenario_simulator import ScenarioSimulator, ScenarioInput, SCENARIO_TEMPLATES
+from ..xai import XAIExplainer
+from ..utils.pipeline import SupplyChainPipeline
+from ..core import get_recommendation
 
 
 @dataclass
@@ -83,7 +84,7 @@ class DigitalTwin:
         
         # Get current recommendation
         if self.pipeline.rl_agent:
-            recommendation = self.pipeline.get_recommendation(current_state, self.pipeline.rl_agent)
+            recommendation = get_recommendation(current_state, self.pipeline.rl_agent)
         else:
             recommendation = {
                 'action': 'do_nothing',
@@ -212,6 +213,22 @@ class DigitalTwin:
             self._print_comparison_analysis(comparison_analysis)
         
         return comparison_analysis
+
+    def _generate_comparison_summary(self, comparison_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Create a compact side-by-side scenario comparison summary."""
+        summary = []
+        for result in comparison_results:
+            scenario_name = result.get('scenario_comparison_name', 'Unnamed Scenario')
+            impact = result.get('scenario_results', {}).get('impact_analysis', {})
+            recommendation = result.get('scenario_results', {}).get('recommendations', {})
+            summary.append({
+                'name': scenario_name,
+                'cost_impact': impact.get('cost_impact', 0.0),
+                'stockout_probability': impact.get('stockout_probability', 0.0),
+                'delay_probability': impact.get('delay_probability', 0.0),
+                'recommended_action': recommendation.get('action', 'do_nothing')
+            })
+        return summary
     
     def get_risk_alerts(self, alert_thresholds: Dict[str, float] = None) -> Dict[str, Any]:
         """

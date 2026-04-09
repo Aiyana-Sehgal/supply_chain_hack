@@ -12,11 +12,7 @@ import time
 
 from .ollama_client import OllamaClient, OllamaUnavailable, OllamaConfig
 from .cache_manager import CacheManager, CacheConfig
-
-# Import the original rule-based explainer (will need to update import path after migration)
-import sys
-import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from .xai_explainer import XAIExplainer as RuleBasedExplainer
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +70,6 @@ class EnhancedXAI:
         
         # Import rule-based explainer
         try:
-            from layer5b.xai_explainer import XAIExplainer as RuleBasedExplainer
             self.rule_explainer = RuleBasedExplainer()
             logger.info("Rule-based explainer loaded successfully")
         except ImportError as e:
@@ -395,7 +390,7 @@ class EnhancedXAI:
 
 # Factory function
 def create_enhanced_xai(ollama_host: str = "localhost", ollama_port: int = 11434,
-                       ollama_model: str = "llama3.1:8b", cache_dir: str = "cache/xai",
+                       ollama_model: str = "llama3.1:latest", cache_dir: str = "cache/xai",
                        enable_enhancement: bool = True) -> EnhancedXAI:
     """Create enhanced XAI system with default configuration"""
     

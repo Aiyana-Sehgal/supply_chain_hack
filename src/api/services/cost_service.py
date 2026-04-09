@@ -7,7 +7,7 @@ Integrates with existing layers for cost data processing.
 
 import logging
 from typing import Dict, List, Any, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 import numpy as np
 
 from ..models import (
@@ -265,6 +265,7 @@ class CostService:
             
             # Create response
             response = CostImpactResponse(
+                timestamp=datetime.now(),
                 recommendation=action,
                 total_current_cost=total_current_cost,
                 total_projected_cost=total_projected_cost,
