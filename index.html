@@ -474,11 +474,16 @@
     }
 
     /* ===================== AI RECOMMENDATION ===================== */
-    #ai-recommendation { background: var(--bg); }
+    #ai-recommendation { background: var(--bg); overflow: visible; }
+    #ai-recommendation .container { overflow: visible; }
     .rec-wrapper {
-      display: grid; grid-template-columns: 1fr 1.4fr; gap: 48px; align-items: start;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+      gap: 48px;
+      align-items: start;
     }
-    .confidence-ring-wrap { text-align: center; }
+    .rec-wrapper > * { min-width: 0; }
+    .confidence-ring-wrap { text-align: center; min-width: 0; }
     .confidence-ring-wrap canvas { max-width: 200px; }
     .confidence-label { font-size: 2.5rem; font-weight: 800; font-family: 'Outfit', sans-serif; color: var(--text); margin-top: -20px; }
     .confidence-sub { font-size: 0.85rem; color: var(--text-muted); }
@@ -487,6 +492,8 @@
       border-radius: var(--radius-lg); padding: 36px 32px;
       border: 1px solid rgba(255, 122, 89, 0.1);
       box-shadow: var(--shadow-sm);
+      overflow: visible;
+      min-width: 0;
     }
     .action-badge {
       display: inline-block;
@@ -498,6 +505,30 @@
     .rec-section { margin-bottom: 24px; }
     .rec-section h4 { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
     .rec-section p { font-size: 0.92rem; color: var(--text); line-height: 1.7; }
+    .rec-section .explanation-body {
+      font-size: 0.92rem; color: var(--text); line-height: 1.7;
+      overflow: visible;
+      max-height: none;
+      overflow-wrap: anywhere;
+      word-wrap: break-word;
+      word-break: break-word;
+      hyphens: auto;
+    }
+    .rec-section .explanation-body .explanation-sub {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text);
+      margin: 1rem 0 0.5rem 0;
+    }
+    .rec-section .explanation-body .explanation-sub:first-child { margin-top: 0; }
+    .rec-section .explanation-body .explanation-para { margin: 0 0 0.85rem 0; }
+    .rec-section .explanation-body .explanation-para:last-child { margin-bottom: 0; }
+    .rec-section .explanation-body .explanation-list {
+      margin: 0.35rem 0 0.85rem 0; padding-left: 1.25rem;
+    }
+    .rec-section .explanation-body .explanation-list li { margin-bottom: 0.4rem; }
+    .rec-section .explanation-body .explanation-muted { color: var(--text-muted); font-style: italic; }
     .risk-factor {
       display: flex; align-items: center; gap: 10px;
       padding: 8px 14px 8px 12px; border-radius: 8px;
@@ -830,11 +861,6 @@
             <div class="kpi-delta" id="sim-demand-delta">From baseline</div>
           </div>
         </div>
-        <div class="recommendation-card">
-          <div class="rec-label">Recommended action</div>
-          <div class="action" id="sim-action">AWAITING SIMULATION</div>
-          <div class="rationale" id="sim-rationale">Configure parameters and run the simulation to see projected impact and the recommended playbook response.</div>
-        </div>
       </div>
     </div>
   </div>
@@ -1019,11 +1045,29 @@
         <div class="action-badge" id="rec-action">LOADING...</div>
         <div class="rec-section">
           <h4>Decision Rationale</h4>
-          <p id="rec-rationale">Analyzing current supply chain state...</p>
+          <div id="rec-rationale" class="explanation-body">Analyzing current supply chain state...</div>
+        </div>
+        <div class="rec-section">
+          <h4>Simulation Validation Check</h4>
+          <div id="val-layer" style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 8px;">
+            <div style="background: rgba(16,185,129,0.05); padding: 12px; border-radius: 6px; border: 1px solid rgba(16,185,129,0.2);">
+               <div style="font-size:0.7rem; color:var(--risk-low); font-weight:600; text-transform:uppercase;">Stockout Risk Drop</div>
+               <div id="val-stockout" style="font-size:1.2rem; font-weight:700; color:var(--text-main); margin-top:4px;">—</div>
+            </div>
+            <div style="background: rgba(16,185,129,0.05); padding: 12px; border-radius: 6px; border: 1px solid rgba(16,185,129,0.2);">
+               <div style="font-size:0.7rem; color:var(--risk-low); font-weight:600; text-transform:uppercase;">Delay Risk Drop</div>
+               <div id="val-delay" style="font-size:1.2rem; font-weight:700; color:var(--text-main); margin-top:4px;">—</div>
+            </div>
+            <div style="background: rgba(16,185,129,0.05); padding: 12px; border-radius: 6px; border: 1px solid rgba(16,185,129,0.2);">
+               <div style="font-size:0.7rem; color:var(--risk-low); font-weight:600; text-transform:uppercase;">Cost Offset</div>
+               <div id="val-cost" style="font-size:1.2rem; font-weight:700; color:var(--text-main); margin-top:4px;">—</div>
+            </div>
+          </div>
+          <div style="margin-top:12px; font-size:0.85rem; padding: 6px 12px; border-radius: 4px; display:inline-block; font-weight:600;" id="val-status">Awaiting validation...</div>
         </div>
         <div class="rec-section">
           <h4>Explanation</h4>
-          <p id="rec-explanation">Generating explainability summary from XAI module...</p>
+          <div id="rec-explanation" class="explanation-body">Generating explainability summary from XAI module...</div>
         </div>
         <div class="rec-section">
           <h4>Risk Factors</h4>
@@ -1147,6 +1191,128 @@ function fmt(n, decimals = 1) { return (n * 100).toFixed(decimals) + '%'; }
 function formatActionLabel(action) {
   if (action == null || action === '') return 'UNKNOWN';
   return String(action).replaceAll('_', ' ').toUpperCase();
+}
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** Turn model text (often markdown-style **bold**, numbered lists) into safe HTML. */
+function formatInlineMarkdownSegment(text) {
+  let t = escapeHtml(text);
+  t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  return t;
+}
+
+function renderMixedParagraphsAndLists(block) {
+  const rawLines = block.split('\n');
+  const segments = [];
+  let i = 0;
+  while (i < rawLines.length) {
+    const line = rawLines[i].trim();
+    if (!line) {
+      i++;
+      continue;
+    }
+    if (/^\d+\.\s+/.test(line)) {
+      const listLines = [];
+      while (i < rawLines.length) {
+        const L = rawLines[i].trim();
+        if (!L) {
+          i++;
+          break;
+        }
+        if (!/^\d+\.\s+/.test(L)) break;
+        listLines.push(L);
+        i++;
+      }
+      const items = listLines.map(l =>
+        '<li>' + formatInlineMarkdownSegment(l.replace(/^\d+\.\s+/, '')) + '</li>'
+      );
+      segments.push('<ol class="explanation-list">' + items.join('') + '</ol>');
+      continue;
+    }
+    const hm = line.match(/^(#{2,3})\s+(.+)$/);
+    if (hm) {
+      const tag = hm[1].length === 2 ? 'h3' : 'h4';
+      segments.push(
+        '<' + tag + ' class="explanation-sub">' + formatInlineMarkdownSegment(hm[2]) + '</' + tag + '>'
+      );
+      i++;
+      continue;
+    }
+    const para = [];
+    while (i < rawLines.length) {
+      const L = rawLines[i].trim();
+      if (!L) {
+        i++;
+        break;
+      }
+      if (/^\d+\.\s+/.test(L)) break;
+      if (/^(#{2,3})\s/.test(L)) break;
+      para.push(L);
+      i++;
+    }
+    if (para.length) {
+      const text = para.join(' ');
+      segments.push('<p class="explanation-para">' + formatInlineMarkdownSegment(text) + '</p>');
+    }
+  }
+  return segments.join('');
+}
+
+function renderExplanationMarkdown(raw) {
+  if (raw == null || !String(raw).trim()) {
+    return '<p class="explanation-muted">No additional detail.</p>';
+  }
+  const normalized = String(raw).replace(/\r\n/g, '\n').trim();
+  const blocks = normalized.split(/\n\s*\n/);
+  const htmlParts = [];
+  for (const block of blocks) {
+    const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
+    if (!lines.length) continue;
+    const allNumbered = lines.every(l => /^\d+\.\s+/.test(l));
+    const someNumbered = lines.some(l => /^\d+\.\s+/.test(l));
+    if (allNumbered && lines.length >= 1) {
+      const items = lines.map(l => {
+        const body = l.replace(/^\d+\.\s+/, '');
+        return '<li>' + formatInlineMarkdownSegment(body) + '</li>';
+      });
+      htmlParts.push('<ol class="explanation-list">' + items.join('') + '</ol>');
+    } else if (someNumbered) {
+      htmlParts.push(renderMixedParagraphsAndLists(block));
+    } else {
+      const joined = lines.join('\n');
+      htmlParts.push(
+        '<p class="explanation-para">' +
+          formatInlineMarkdownSegment(joined).replace(/\n/g, '<br />') +
+        '</p>'
+      );
+    }
+  }
+  return htmlParts.length ? htmlParts.join('') : '<p class="explanation-para">' + formatInlineMarkdownSegment(normalized) + '</p>';
+}
+
+function setRecommendationFormattedText(elementId, raw) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  if (raw == null || raw === '') {
+    el.textContent = '';
+    return;
+  }
+  const s = String(raw);
+  if (!/\*\*|(?:^|\n)\s*\d+\.\s+|(?:^|\n)#{2,3}\s/m.test(s)) {
+    el.textContent = s;
+    return;
+  }
+  el.classList.add('explanation-body');
+  el.innerHTML = renderExplanationMarkdown(s);
 }
 
 /** Predicted demand (units/mo) from cost breakdown: Transportation = demand * 0.05 in CostService */
@@ -1496,12 +1662,82 @@ document.querySelectorAll('.reveal, .feature-card').forEach(el => observer.obser
 const demandSpike = document.getElementById('demand-spike');
 const demandSpikeVal = document.getElementById('demand-spike-val');
 
-demandSpike.addEventListener('input', () => {
-  const v = parseInt(demandSpike.value);
-  demandSpikeVal.textContent = (v >= 0 ? '+' : '') + v + '%';
-});
+// Causal simulation constants (must match src/api/endpoints/simulation.py)
+const SIM_D_BASE = 500000;
+const SIM_I_BASE = 270000;
+const SIM_BASE_D_S = 0.3;
+const SIM_STOCKOUT_K = 6;
+const SIM_DTS_FLOOR = 0.25;
+const SIM_W1 = 0.55;
+const SIM_W2 = 0.5;
+const SIM_W3 = 0.3;
+const SIM_ALPHA = 0.45;
+const SIM_BETA = 220000;
 
-function applySimulationToUI(impact, rec, demandChangePct) {
+/**
+ * Same causal pipeline as POST /api/v1/simulate:
+ * D_adj → inventory pressure → P_stockout ∝ 1/days_cover → P_delay(Sf,Td,Ds) → cost → policy.
+ */
+function computeScenarioLocal(spike, sF, tD, wD) {
+  const dAdj = SIM_D_BASE * (1 + spike);
+  let inventory = SIM_I_BASE;
+  if (wD) {
+    inventory *= 0.9;
+  }
+
+  const sf = sF ? 1 : 0;
+  const td = tD ? 1 : 0;
+  const wd = wD ? 1 : 0;
+
+  const dDaily = dAdj / 30;
+  const dts = inventory / Math.max(dDaily, 1e-9);
+  const inventoryRatio = inventory / Math.max(dAdj, 1);
+
+  let stockoutLevel = 'low';
+  let pStockout = 0.10;
+  if (dts > 30) {
+    stockoutLevel = 'low';
+    pStockout = 0.10;
+  } else if (dts > 15) {
+    stockoutLevel = 'low';
+    pStockout = 0.25;
+  } else if (dts >= 7) {
+    stockoutLevel = 'medium';
+    pStockout = 0.55;
+  } else if (dts >= 5) {
+    stockoutLevel = 'high';
+    pStockout = 0.75;
+  } else {
+    stockoutLevel = 'high';
+    pStockout = 0.92;
+  }
+
+  const pDelay = Math.min(1, 0.55 * sf + 0.45 * td + 0.40 * wd);
+  let delayLevel = 'low';
+  if (pDelay >= 0.8) {
+    delayLevel = 'high';
+  } else if (pDelay >= 0.35) {
+    delayLevel = 'medium';
+  }
+
+  const deltaDAbs = dAdj - SIM_D_BASE;
+  const costImpact = SIM_ALPHA * Math.max(0, deltaDAbs) + SIM_BETA * pDelay;
+  const demandChange = (dAdj - SIM_D_BASE) / SIM_D_BASE;
+
+  return {
+    impact: {
+      cost_impact: costImpact,
+      stockout_probability: pStockout,
+      delay_probability: pDelay,
+      demand_change: demandChange
+    },
+    spike,
+    daysCover: dts
+  };
+}
+
+function applySimulationToUI(impact, rec, demandChangePct, opts) {
+  const o = opts || {};
   const costImpact = impact.cost_impact;
   const stockoutProb = impact.stockout_probability;
   const delayProb = impact.delay_probability;
@@ -1516,61 +1752,45 @@ function applySimulationToUI(impact, rec, demandChangePct) {
   costDelta.textContent = costImpact > 0 ? 'Cost pressure rising' : 'Stable vs baseline';
   costDelta.className = 'kpi-delta ' + (costImpact > 10000 ? 'up' : 'down');
 
-  document.getElementById('sim-stockout-delta').textContent = stockoutProb > 0.5 ? 'Elevated exposure' : 'Within tolerance';
-  document.getElementById('sim-delay-delta').textContent = delayProb > 0.5 ? 'Logistics risk elevated' : 'Low logistics risk';
+  document.getElementById('sim-stockout-delta').textContent =
+    stockoutProb > 0.8 ? 'Above emergency threshold' : stockoutProb > 0.5 ? 'Above reorder threshold' : 'Below reorder threshold';
+  document.getElementById('sim-delay-delta').textContent =
+    delayProb > 0.6 ? 'Above reroute threshold' : 'Below reroute threshold';
 
-  document.getElementById('sim-action').textContent = formatActionLabel(rec.action);
-  document.getElementById('sim-rationale').textContent = rec.rationale || '';
+  if (o.demandNote) document.getElementById('sim-demand-delta').textContent = o.demandNote;
 }
 
+let simulationPreviewTimer = null;
+function scheduleSimulationPreview() {
+  clearTimeout(simulationPreviewTimer);
+  simulationPreviewTimer = setTimeout(updateSimulationPreview, 48);
+}
+
+function updateSimulationPreview() {
+  const spike = parseInt(demandSpike.value, 10) / 100;
+  const sF = document.getElementById('supplier-failure').checked;
+  const tD = document.getElementById('transport-delay').checked;
+  const wD = document.getElementById('weather-disruption').checked;
+  const out = computeScenarioLocal(spike, sF, tD, wD);
+  applySimulationToUI(out.impact, out.rec, out.spike, {
+    demandNote: 'Live preview · ~' + out.daysCover.toFixed(1) + ' d cover'
+  });
+}
+
+demandSpike.addEventListener('input', () => {
+  const v = parseInt(demandSpike.value, 10);
+  demandSpikeVal.textContent = (v >= 0 ? '+' : '') + v + '%';
+  scheduleSimulationPreview();
+});
+
+['supplier-failure', 'transport-delay', 'weather-disruption'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('change', scheduleSimulationPreview);
+});
+
 function runSimulationClientOnly(spike, sF, tD, wD) {
-  const baseState = {
-    predicted_demand: 500000,
-    current_inventory: 270000,
-    supplier_risk_score: 0.35,
-    disruption_signal: 0.3,
-    days_to_stockout: 16.2
-  };
-
-  let modState = { ...baseState };
-  modState.predicted_demand *= (1 + spike);
-  if (sF) modState.supplier_risk_score = Math.max(0.9, modState.supplier_risk_score);
-  if (tD) modState.disruption_signal = Math.max(0.8, modState.disruption_signal);
-  if (wD) {
-    modState.disruption_signal = Math.max(0.7, modState.disruption_signal);
-    modState.current_inventory *= 0.9;
-  }
-  modState.days_to_stockout = modState.current_inventory / Math.max(modState.predicted_demand / 30, 1);
-  modState.composite_risk = modState.supplier_risk_score * 0.3 + modState.disruption_signal * 0.4 + 0.3 * 0.3;
-
-  let stockoutBase = modState.days_to_stockout <= 3 ? 0.8 : modState.days_to_stockout <= 7 ? 0.5 : modState.days_to_stockout <= 14 ? 0.2 : 0.05;
-  const stockoutProb = Math.min(0.95, stockoutBase + modState.supplier_risk_score * 0.3 + modState.disruption_signal * 0.2);
-  const delayProb = Math.min(0.9, modState.supplier_risk_score * 0.7 + modState.disruption_signal * 0.6);
-
-  const demandChange = (modState.predicted_demand - baseState.predicted_demand) / baseState.predicted_demand;
-  const baseCost = baseState.predicted_demand * 0.5;
-  const costImpact = demandChange * baseCost + (stockoutProb * 1000 + delayProb * 500) * (modState.predicted_demand / 100000);
-
-  let action = 'do_nothing', rationale = 'Current conditions are within safe operating parameters.';
-  if (modState.days_to_stockout <= 3 || modState.current_inventory / modState.predicted_demand < 0.02) {
-    action = 'emergency_restock';
-    rationale = 'Critical inventory shortage detected. Immediate emergency restocking required to prevent stockout.';
-  } else if (modState.supplier_risk_score > 0.8) {
-    action = 'switch_supplier';
-    rationale = 'Severe supplier risk detected. Switch to backup supplier to maintain supply continuity.';
-  } else if (modState.disruption_signal > 0.8) {
-    action = 'reroute_shipment';
-    rationale = 'High disruption signal detected. Alternative logistics routes recommended to avoid delays.';
-  } else if (modState.days_to_stockout < 7 || modState.composite_risk > 0.5) {
-    action = 'reorder_stock';
-    rationale = 'Elevated risk conditions detected. Proactive stock reorder recommended.';
-  }
-
-  applySimulationToUI(
-    { cost_impact: costImpact, stockout_probability: stockoutProb, delay_probability: delayProb, demand_change: demandChange },
-    { action, rationale },
-    spike
-  );
+  const out = computeScenarioLocal(spike, sF, tD, wD);
+  applySimulationToUI(out.impact, out.rec, out.spike, { demandNote: 'From baseline (offline mirror)' });
 }
 
 async function runSimulation() {
@@ -1603,8 +1823,13 @@ async function runSimulation() {
     clearTimeout(t);
     if (!resp.ok) throw new Error('simulate ' + resp.status);
     const data = await resp.json();
-    if (data.status !== 'success' || !data.impact_analysis || !data.recommendations) throw new Error('invalid simulate payload');
-    applySimulationToUI(data.impact_analysis, data.recommendations, spike);
+    if (data.status !== 'success' || !data.impact_analysis) throw new Error('invalid simulate payload');
+    const dCover = data.risk_breakdown && data.risk_breakdown.days_to_stockout != null
+      ? Number(data.risk_breakdown.days_to_stockout).toFixed(1)
+      : null;
+    applySimulationToUI(data.impact_analysis, null, spike, {
+      demandNote: dCover ? 'Server run · ' + dCover + ' d cover' : 'Server run confirmed'
+    });
   } catch (e) {
     console.warn('Simulation API unavailable, using client mirror:', e);
     await new Promise(r => setTimeout(r, 400));
@@ -1810,8 +2035,14 @@ async function loadRecommendations() {
     initConfidenceChart(data.confidence);
 
     const exp = data.explanation || {};
-    document.getElementById('rec-rationale').textContent = exp.rationale || 'Place standard order to replenish inventory levels based on current demand forecast.';
-    document.getElementById('rec-explanation').textContent = exp.enhanced_explanation || exp.rationale || 'AI analysis indicates elevated risk conditions requiring proactive intervention.';
+    setRecommendationFormattedText(
+      'rec-rationale',
+      exp.rationale || 'Place standard order to replenish inventory levels based on current demand forecast.'
+    );
+    setRecommendationFormattedText(
+      'rec-explanation',
+      exp.enhanced_explanation || exp.rationale || 'Analysis indicates current conditions and the recommended next step above.'
+    );
 
     const rfList = document.getElementById('risk-factors-list');
     rfList.innerHTML = '';
@@ -1834,13 +2065,36 @@ async function loadRecommendations() {
 
     document.getElementById('rec-time').textContent = data.implementation_time || '3–5 days';
 
+    const val = data.validation_layer || {};
+    
+    function formatReduction(num) {
+      if (!num || Math.abs(num) < 0.0001) return '0.0%';
+      return num > 0 ? '-' + (num * 100).toFixed(1) + '%' : '+' + (Math.abs(num) * 100).toFixed(1) + '%';
+    }
+
+    document.getElementById('val-stockout').textContent = formatReduction(val.simulated_stockout_reduction);
+    document.getElementById('val-delay').textContent = formatReduction(val.simulated_delay_reduction);
+    
+    const cs = val.cost_saved || 0;
+    document.getElementById('val-cost').textContent = (cs < 0 ? '-₹' : '₹') + formatNumber(Math.abs(cs));
+
+    const valStatus = document.getElementById('val-status');
+    valStatus.textContent = String(val.validation_status || 'UNKNOWN').replace('_', ' ');
+    if (val.validation_status === 'VALIDATED_OPTIMAL') {
+      valStatus.style.background = 'rgba(16,185,129,0.15)';
+      valStatus.style.color = 'var(--risk-low)';
+    } else {
+      valStatus.style.background = 'rgba(255,122,89,0.15)';
+      valStatus.style.color = 'var(--primary)';
+    }
+
   } catch (err) {
     console.warn('Recommendations API unavailable, using demo data:', err);
     document.getElementById('rec-action').textContent = 'REORDER STOCK';
     document.getElementById('confidence-val').textContent = '78%';
     initConfidenceChart(78);
-    document.getElementById('rec-rationale').textContent = 'Place standard order to replenish inventory levels based on current demand forecast.';
-    document.getElementById('rec-explanation').textContent = 'Inventory coverage is at 5 days against a 14-day safety threshold. Demand forecast shows 12% increase next month. Reorder stock now to prevent stockout.';
+    setRecommendationFormattedText('rec-rationale', 'Place standard order to replenish inventory levels based on current demand forecast.');
+    setRecommendationFormattedText('rec-explanation', 'Inventory coverage is at 5 days against a 14-day safety threshold. Demand forecast shows 12% increase next month. Reorder stock now to prevent stockout.');
     const rfList = document.getElementById('risk-factors-list');
     rfList.innerHTML = `
       <div class="risk-factor">High supplier risk (65%) detected</div>
@@ -1936,6 +2190,7 @@ async function init() {
 // Run on load
 window.addEventListener('DOMContentLoaded', () => {
   initNetworkComparisonDefaults();
+  updateSimulationPreview();
   init();
 });
 

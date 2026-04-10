@@ -239,11 +239,9 @@ ENHANCED EXPLANATION:"""
         if "ENHANCED EXPLANATION:" in cleaned:
             cleaned = cleaned.split("ENHANCED EXPLANATION:")[-1].strip()
         
-        # Ensure it's not too long or too short
+        # Ensure it's not too short
         if len(cleaned) < 20:
             return "Enhanced explanation unavailable - using standard analysis"
-        elif len(cleaned) > 600:
-            cleaned = cleaned[:597] + "..."
         
         return cleaned
     

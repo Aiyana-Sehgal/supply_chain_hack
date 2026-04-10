@@ -81,6 +81,13 @@ class RecommendationExplanation(BaseModel):
     risk_factors: List[str] = Field(..., description="Key risk factors considered")
     confidence_factors: List[str] = Field(..., description="Factors affecting confidence")
 
+class ValidationMetrics(BaseModel):
+    """Validation layer feedback loop metrics comparing action vs baseline"""
+    simulated_stockout_reduction: float = Field(..., description="Absolute drop in stockout probability")
+    simulated_delay_reduction: float = Field(..., description="Absolute drop in delay probability")
+    cost_saved: float = Field(..., description="Monetary cost offset by simulated action")
+    validation_status: str = Field(..., description="Outcome of the simulation validation ('VALIDATED_OPTIMAL', 'VALIDATED_SUBOPTIMAL')")
+
 class RecommendationResponse(BaseResponse):
     """Recommendation response model"""
     action: ActionType = Field(..., description="Recommended action")
@@ -90,6 +97,7 @@ class RecommendationResponse(BaseResponse):
     implementation_time: Optional[str] = Field(None, description="Estimated implementation time")
     alternatives: List[ActionType] = Field(..., description="Alternative actions considered")
     historical_performance: Optional[Dict[str, float]] = Field(None, description="Historical action performance")
+    validation_layer: ValidationMetrics = Field(..., description="Simulation-backed validation layer metrics")
 
 # Cost Impact Models
 class CostImpactBreakdown(BaseModel):

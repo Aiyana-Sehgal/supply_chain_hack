@@ -319,7 +319,7 @@ class ProductTestSuite:
             results = simulator.run_scenario_simulation(scenario)
             
             # Validate results
-            required_keys = ['scenario_results', 'impact_analysis', 'recommendations']
+            required_keys = ['scenario_summary', 'impact_analysis', 'recommendations']
             missing_keys = [key for key in required_keys if key not in results]
             
             if missing_keys:
@@ -334,6 +334,62 @@ class ProductTestSuite:
             passed = False
         
         self.log_test("Scenario Simulator", passed, time.time() - start_time, details)
+        return passed
+    
+    def test_simulation_causal_logic(self) -> bool:
+        """Regression test for causal simulation logic and recommendations."""
+        print("\n[TEST 9] Simulation Causal Logic")
+        print("-" * 50)
+
+        start_time = time.time()
+        try:
+            from api.endpoints.simulation import _simulate_scenario
+            from api.models import ScenarioRequest
+
+            baseline = ScenarioRequest(
+                demand_spike=0.0,
+                supplier_failure=False,
+                transport_delay=False,
+                weather_disruption=False,
+                inventory_adjustment=0.0
+            )
+            baseline_result = _simulate_scenario(baseline)
+            if baseline_result['recommendations']['action'] != 'do_nothing':
+                raise ValueError('Baseline scenario should yield do_nothing')
+
+            medium_stockout = ScenarioRequest(
+                demand_spike=0.20,
+                supplier_failure=False,
+                transport_delay=False,
+                weather_disruption=False,
+                inventory_adjustment=0.0
+            )
+            medium_result = _simulate_scenario(medium_stockout)
+            if medium_result['recommendations']['action'] != 'reorder_stock':
+                raise ValueError('Medium stockout risk should recommend reorder_stock')
+
+            high_stockout = ScenarioRequest(
+                demand_spike=0.50,
+                supplier_failure=False,
+                transport_delay=False,
+                weather_disruption=False,
+                inventory_adjustment=-0.5
+            )
+            high_result = _simulate_scenario(high_stockout)
+            if high_result['recommendations']['action'] != 'emergency_restock':
+                raise ValueError('High stockout risk should recommend emergency_restock')
+
+            details = (
+                f"Baseline action={baseline_result['recommendations']['action']}, "
+                f"medium action={medium_result['recommendations']['action']}, "
+                f"high action={high_result['recommendations']['action']}"
+            )
+            passed = True
+        except Exception as e:
+            details = f"Error: {str(e)}"
+            passed = False
+
+        self.log_test("Simulation Causal Logic", passed, time.time() - start_time, details)
         return passed
     
     def test_digital_twin(self) -> bool:
@@ -491,6 +547,7 @@ class ProductTestSuite:
             self.test_ollama_integration,
             self.test_enhanced_xai,
             self.test_scenario_simulator,
+            self.test_simulation_causal_logic,
             self.test_digital_twin,
             self.test_unified_pipeline,
             self.test_performance_benchmarks,

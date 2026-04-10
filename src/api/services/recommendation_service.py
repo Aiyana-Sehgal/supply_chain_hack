@@ -13,8 +13,12 @@ import numpy as np
 from ..models import (
     RecommendationResponse, 
     RecommendationExplanation, 
-    ActionType
+    ValidationMetrics,
+    ActionType,
+    ScenarioRequest
 )
+
+from ..endpoints.simulation import _simulate_scenario
 
 logger = logging.getLogger(__name__)
 
@@ -40,28 +44,21 @@ class RecommendationService:
         }
     
     def _get_current_state(self) -> Dict[str, Any]:
-        """Get current state from existing layers"""
+        """Get current state from layer3"""
         try:
-            # Import from existing layers
             import sys
             import os
             sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
             
             from src.core.layer3 import build_layer3_dataset
-            from src.core.layer4 import get_recommendation
             
-            # Get current state
             layer3_bundle = build_layer3_dataset(verbose=False)
             state = layer3_bundle['layer3_state']
             
-            # Get RL recommendation
-            rl_rec = get_recommendation(state)
-            
-            return state, rl_rec
+            return state
             
         except Exception as e:
             logger.error(f"Error getting current state: {e}")
-            # Return mock data if layers are not available
             mock_state = {
                 'predicted_demand': 500000,
                 'current_inventory': 25000,
@@ -70,14 +67,7 @@ class RecommendationService:
                 'days_to_stockout': 5.0,
                 'composite_risk_score': 0.55
             }
-            
-            mock_rl_rec = {
-                'action': 'reorder_stock',
-                'confidence': 78.5,
-                'explanation': 'High demand and low inventory indicate need for restocking'
-            }
-            
-            return mock_state, mock_rl_rec
+            return mock_state
     
     def _get_enhanced_explanation(self, base_explanation: str, state: Dict[str, Any], action: str) -> Optional[str]:
         """Get enhanced explanation from XAI system"""
@@ -182,25 +172,77 @@ class RecommendationService:
             
             logger.info("Generating new recommendation")
             
-            # Get current state and RL recommendation
-            state, rl_rec = self._get_current_state()
+            # Get current state
+            state = self._get_current_state()
             
-            # Extract action and confidence
-            action_str = rl_rec.get('action', 'do_nothing')
-            confidence = rl_rec.get('confidence', 75.0)
+            # Translate to simulation scenario
+            scenario = ScenarioRequest(
+                demand_spike=0.0,
+                supplier_failure=state.get('supplier_risk_score', 0) > 0.8,
+                transport_delay=state.get('disruption_signal', 0) > 0.7,
+                weather_disruption=False,
+                inventory_adjustment=0.0
+            )
             
-            # Convert to ActionType enum
+            # Run baseline simulation
+            baseline_result = _simulate_scenario(scenario)
+            base_p_stockout = baseline_result['impact_analysis']['stockout_probability']
+            base_p_delay = baseline_result['impact_analysis']['delay_probability']
+            base_cost = baseline_result['impact_analysis']['cost_impact']
+
+            # Make deterministic decision layer
+            if base_p_stockout > 0.75:
+                action_str = "emergency_restock"
+            elif base_p_delay > 0.6 and scenario.supplier_failure:
+                action_str = "switch_supplier"
+            elif base_p_delay > 0.6 and scenario.transport_delay:
+                action_str = "reroute_shipment"
+            elif base_p_stockout > 0.4:
+                action_str = "reorder_stock"
+            else:
+                action_str = "do_nothing"
+                
+            confidence = 88.0
+
             try:
                 action = ActionType(action_str)
             except ValueError:
                 action = ActionType.DO_NOTHING
-                logger.warning(f"Unknown action {action_str}, defaulting to do_nothing")
-            
+
             # Generate explanation
             explanation = self._generate_explanation(state, action_str, confidence)
+
+            # Validation Layer
+            val_scenario = ScenarioRequest(**scenario.dict())
+            if action_str == "emergency_restock":
+                val_scenario.inventory_adjustment = 0.5
+            elif action_str == "reorder_stock":
+                val_scenario.inventory_adjustment = 0.2
+            elif action_str == "switch_supplier":
+                val_scenario.supplier_failure = False
+            elif action_str == "reroute_shipment":
+                val_scenario.transport_delay = False
+                
+            val_result = _simulate_scenario(val_scenario)
+            val_p_stockout = val_result['impact_analysis']['stockout_probability']
+            val_p_delay = val_result['impact_analysis']['delay_probability']
+            val_cost = val_result['impact_analysis']['cost_impact']
             
-            # Calculate cost impact
-            cost_impact = self._calculate_cost_impact(action_str, state)
+            stockout_reduction = base_p_stockout - val_p_stockout
+            delay_reduction = base_p_delay - val_p_delay
+            
+            action_cost = self._calculate_cost_impact(action_str, state)
+            cost_impact = action_cost # the response uses this for what it costs
+            cost_saved = base_cost - val_cost - action_cost
+
+            val_status = "VALIDATED_OPTIMAL" if cost_saved >= 0 or max(stockout_reduction, delay_reduction) > 0.1 else "VALIDATED_SUBOPTIMAL"
+
+            validation_layer = ValidationMetrics(
+                simulated_stockout_reduction=stockout_reduction,
+                simulated_delay_reduction=delay_reduction,
+                cost_saved=cost_saved,
+                validation_status=val_status
+            )
             
             # Get implementation time
             implementation_times = {
@@ -224,7 +266,8 @@ class RecommendationService:
                 cost_impact=cost_impact,
                 implementation_time=implementation_times.get(action),
                 alternatives=alternatives,
-                historical_performance=historical_performance
+                historical_performance=historical_performance,
+                validation_layer=validation_layer
             )
             
             # Cache the response

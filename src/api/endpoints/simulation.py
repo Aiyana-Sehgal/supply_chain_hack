@@ -1,146 +1,132 @@
 """
 Scenario Simulation API Endpoint
 
-Provides Digital Twin scenario simulation endpoints.
+Causal pipeline (strict order):
+  1. Demand adjustment
+  2. Inventory pressure (daily burn, days of cover)
+  3. Stockout probability (inverse to days of cover; demand-only path)
+  4. Delay probability (supplier failure, transport, disruption signal; w1>w2>w3)
+  5. Cost impact (demand increase + delay exposure)
+  6. Policy decision (thresholds on P_stockout, P_delay)
 """
 
 from fastapi import APIRouter, HTTPException
 from datetime import datetime
 import asyncio
 import logging
-import copy
+import math
 
 from ..models import ScenarioRequest
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+# --- Baseline twin (units/month demand, units inventory) ---
+D_BASE = 500_000.0
+I_BASE = 270_000.0
+BASE_DISRUPTION_SIGNAL = 0.30  # D_s ∈ [0, 1], logistics/supplier stress (continuous)
+
+# Delay: independent branch using supplier, transport, and weather disruption weights
+_W1, _W2, _W3 = 0.55, 0.45, 0.40
+
+# Cost: α·max(0, D_adj - D_base) + β·P_delay (INR-style scale)
+_ALPHA_DEMAND = 0.45  # per unit-month of demand increase
+_BETA_DELAY = 220_000.0
+
+
 def _simulate_scenario(scenario: ScenarioRequest) -> dict:
-    """Run scenario simulation mirroring ScenarioSimulator logic."""
-    # Base state — inventory sized for ~16–17 days of cover at baseline demand
-    # (monthly demand / 30 = daily rate). Previously 25k vs 500k/mo implied ~1.5 days,
-    # which forced emergency_restock for every scenario.
-    base_state = {
-        'predicted_demand': 500000,
-        'current_inventory': 270000,
-        'supplier_risk_score': 0.35,
-        'disruption_signal': 0.3,
-        'days_to_stockout': 16.2,
-        'composite_risk_score': 0.3
+    """
+    Deterministic causal simulation focused only on the 4 quantitative core metrics.
+    Action recommendations are deferred to the separate Decision Engine agent.
+    """
+    # ----- 1. Demand adjustment -----
+    demand_change_frac = scenario.demand_spike
+    d_adj = D_BASE * (1.0 + demand_change_frac)
+
+    # ----- 2. Delay probability (mathematical independent union) -----
+    p_delay = BASE_DISRUPTION_SIGNAL
+    if scenario.supplier_failure:
+        p_delay = p_delay + 0.60 - (p_delay * 0.60)
+    if scenario.transport_delay:
+        p_delay = p_delay + 0.40 - (p_delay * 0.40)
+    if scenario.weather_disruption:
+        p_delay = p_delay + 0.20 - (p_delay * 0.20)
+
+    # ----- 3. Stockout probability (exponential decay) -----
+    effective_supply_rate = 1.0
+    if scenario.supplier_failure:
+        effective_supply_rate *= 0.2
+    if scenario.transport_delay:
+        effective_supply_rate *= 0.6
+    if scenario.weather_disruption:
+        effective_supply_rate *= 0.85
+
+    inventory = I_BASE * (1.0 + scenario.inventory_adjustment)
+    
+    # Calculate effective days of cover
+    d_daily = d_adj / 30.0
+    effective_buffer = inventory * effective_supply_rate
+    days_cover = effective_buffer / max(d_daily, 1e-9)
+    
+    # Exponential probability based on coverage
+    # Assuming half-life of 15 days cover provides 36% risk
+    p_stockout = math.exp(-days_cover / 15.0)
+    p_stockout = min(1.0, max(0.0, p_stockout))
+
+    # ----- 4. Cost impact -----
+    delta_d_abs = d_adj - D_BASE
+    cost_demand_term = _ALPHA_DEMAND * max(0.0, delta_d_abs)
+    
+    # Exponential cost scaling vs fixed buckets
+    cost_delay_term = 400_000.0 * p_delay
+    cost_stockout_term = 600_000.0 * p_stockout
+    
+    # Baseline expected cost
+    baseline_p_stockout = math.exp(- (I_BASE) / (D_BASE/30) / 15.0)
+    baseline_cost = (400_000.0 * BASE_DISRUPTION_SIGNAL) + (600_000.0 * baseline_p_stockout)
+    
+    cost_impact = cost_demand_term + cost_delay_term + cost_stockout_term - baseline_cost
+
+    pipeline = {
+        "step_1_demand": {"d_adj": d_adj},
+        "step_2_delay": {"p_delay": p_delay},
+        "step_3_stockout": {"days_cover": days_cover, "p_stockout": p_stockout},
+        "step_4_cost": {"cost_impact": cost_impact},
     }
 
-    mod = copy.deepcopy(base_state)
-
-    # Apply demand spike
-    mod['predicted_demand'] *= (1 + scenario.demand_spike)
-
-    # Apply inventory adjustment
-    if scenario.inventory_adjustment != 0:
-        mod['current_inventory'] *= (1 + scenario.inventory_adjustment)
-
-    # Apply supplier failure
-    if scenario.supplier_failure:
-        mod['supplier_risk_score'] = max(0.9, mod['supplier_risk_score'])
-
-    # Apply transport delay
-    if scenario.transport_delay:
-        mod['disruption_signal'] = max(0.8, mod['disruption_signal'])
-
-    # Apply weather disruption
-    if scenario.weather_disruption:
-        mod['disruption_signal'] = max(0.7, mod['disruption_signal'])
-        mod['current_inventory'] *= 0.9
-
-    # Recalculate days to stockout
-    demand_per_day = mod['predicted_demand'] / 30.0
-    mod['days_to_stockout'] = mod['current_inventory'] / max(demand_per_day, 1)
-
-    # Composite risk
-    mod['composite_risk_score'] = (
-        mod['supplier_risk_score'] * 0.3 +
-        mod['disruption_signal'] * 0.4 +
-        0.3 * 0.3
-    )
-
-    # Stockout probability
-    dts = mod['days_to_stockout']
-    stockout_base = 0.8 if dts <= 3 else (0.5 if dts <= 7 else (0.2 if dts <= 14 else 0.05))
-    stockout_prob = min(0.95, stockout_base + mod['supplier_risk_score'] * 0.3 + mod['disruption_signal'] * 0.2)
-    delay_prob = min(0.9, mod['supplier_risk_score'] * 0.7 + mod['disruption_signal'] * 0.6)
-
-    # Cost impact
-    demand_change_pct = (mod['predicted_demand'] - base_state['predicted_demand']) / base_state['predicted_demand']
-    base_cost = base_state['predicted_demand'] * 0.5
-    cost_impact = demand_change_pct * base_cost + (stockout_prob * 1000 + delay_prob * 500) * (mod['predicted_demand'] / 100000)
-
-    # Recommended action (safety layer logic from Layer 4)
-    inv_ratio = mod['current_inventory'] / max(mod['predicted_demand'], 1)
-    if dts <= 3 or inv_ratio < 0.02:
-        action = 'emergency_restock'
-        rationale = 'Critical inventory shortage. Emergency restocking required immediately.'
-    elif mod['supplier_risk_score'] > 0.8:
-        action = 'switch_supplier'
-        rationale = 'Severe supplier risk detected. Switch to backup supplier to maintain supply continuity.'
-    elif mod['disruption_signal'] > 0.8:
-        action = 'reroute_shipment'
-        rationale = 'High disruption detected. Activate alternative logistics routes.'
-    elif dts < 7 or mod['composite_risk_score'] > 0.5:
-        action = 'reorder_stock'
-        rationale = 'Elevated risk conditions. Proactive stock reorder recommended.'
-    else:
-        action = 'do_nothing'
-        rationale = 'Current conditions are within safe operating parameters. Continue monitoring.'
-
     return {
-        'impact_analysis': {
-            'cost_impact': cost_impact,
-            'stockout_probability': stockout_prob,
-            'delay_probability': delay_prob,
-            'demand_change': demand_change_pct
+        "impact_analysis": {
+            "cost_impact": cost_impact,
+            "stockout_probability": p_stockout,
+            "delay_probability": p_delay,
+            "demand_change": demand_change_frac,
         },
-        'recommendations': {
-            'action': action,
-            'rationale': rationale
+        "scenario_summary": {
+            "baseline_demand": D_BASE,
+            "scenario_demand": d_adj,
+            "baseline_inventory": I_BASE,
+            "scenario_inventory": inventory,
         },
-        'risk_breakdown': {
-            'supplier_risk': mod['supplier_risk_score'],
-            'disruption_risk': mod['disruption_signal'],
-            'composite_risk': mod['composite_risk_score'],
-            'days_to_stockout': mod['days_to_stockout']
-        },
-        'scenario_summary': {
-            'baseline_demand': base_state['predicted_demand'],
-            'scenario_demand': mod['predicted_demand'],
-            'baseline_inventory': base_state['current_inventory'],
-            'scenario_inventory': mod['current_inventory']
-        }
+        "pipeline": pipeline,
     }
 
 
 @router.post("/simulate")
 async def run_simulation(scenario: ScenarioRequest):
     """
-    Run Digital Twin scenario simulation.
-    
-    Args:
-        scenario: Scenario parameters including demand_spike, supplier_failure, etc.
-    
-    Returns:
-        Complete scenario impact analysis with AI recommendations.
+    Run Digital Twin scenario simulation (causal pipeline).
     """
     try:
-        logger.info(f"Simulation endpoint called: demand_spike={scenario.demand_spike}, "
-                    f"supplier_failure={scenario.supplier_failure}, "
-                    f"transport_delay={scenario.transport_delay}, "
-                    f"weather_disruption={scenario.weather_disruption}")
+        logger.info(
+            f"Simulation: demand_spike={scenario.demand_spike}, "
+            f"supplier_failure={scenario.supplier_failure}, "
+            f"transport_delay={scenario.transport_delay}, "
+            f"weather_disruption={scenario.weather_disruption}"
+        )
 
         results = await asyncio.to_thread(_simulate_scenario, scenario)
 
-        return {
-            'timestamp': datetime.now().isoformat(),
-            'status': 'success',
-            **results
-        }
+        return {"timestamp": datetime.now().isoformat(), "status": "success", **results}
 
     except Exception as e:
         logger.error(f"Error in simulation endpoint: {e}")
@@ -151,13 +137,48 @@ async def run_simulation(scenario: ScenarioRequest):
 async def get_scenario_templates():
     """Get predefined scenario templates."""
     return {
-        'timestamp': datetime.now().isoformat(),
-        'status': 'success',
-        'templates': [
-            {'name': 'demand_surge', 'label': 'Demand Surge +30%', 'demand_spike': 0.30, 'supplier_failure': False, 'transport_delay': False, 'weather_disruption': False},
-            {'name': 'supplier_crisis', 'label': 'Supplier Crisis', 'demand_spike': 0.0, 'supplier_failure': True, 'transport_delay': False, 'weather_disruption': False},
-            {'name': 'transport_disruption', 'label': 'Transport Disruption', 'demand_spike': 0.0, 'supplier_failure': False, 'transport_delay': True, 'weather_disruption': False},
-            {'name': 'weather_crisis', 'label': 'Weather Crisis', 'demand_spike': 0.0, 'supplier_failure': False, 'transport_delay': False, 'weather_disruption': True},
-            {'name': 'perfect_storm', 'label': 'Perfect Storm', 'demand_spike': 0.25, 'supplier_failure': True, 'transport_delay': True, 'weather_disruption': False},
-        ]
+        "timestamp": datetime.now().isoformat(),
+        "status": "success",
+        "templates": [
+            {
+                "name": "demand_surge",
+                "label": "Demand Surge +30%",
+                "demand_spike": 0.30,
+                "supplier_failure": False,
+                "transport_delay": False,
+                "weather_disruption": False,
+            },
+            {
+                "name": "supplier_crisis",
+                "label": "Supplier Crisis",
+                "demand_spike": 0.0,
+                "supplier_failure": True,
+                "transport_delay": False,
+                "weather_disruption": False,
+            },
+            {
+                "name": "transport_disruption",
+                "label": "Transport Disruption",
+                "demand_spike": 0.0,
+                "supplier_failure": False,
+                "transport_delay": True,
+                "weather_disruption": False,
+            },
+            {
+                "name": "weather_crisis",
+                "label": "Weather Crisis",
+                "demand_spike": 0.0,
+                "supplier_failure": False,
+                "transport_delay": False,
+                "weather_disruption": True,
+            },
+            {
+                "name": "perfect_storm",
+                "label": "Perfect Storm",
+                "demand_spike": 0.25,
+                "supplier_failure": True,
+                "transport_delay": True,
+                "weather_disruption": False,
+            },
+        ],
     }
