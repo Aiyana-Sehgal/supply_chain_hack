@@ -7,6 +7,7 @@ Provides RL agent recommendations with XAI explanations.
 from fastapi import APIRouter, HTTPException
 from typing import Optional
 from datetime import datetime
+import asyncio
 import logging
 
 from ..models import RecommendationResponse
@@ -33,13 +34,16 @@ async def get_current_recommendations():
     """
     try:
         logger.info("Recommendations endpoint called")
-        
-        # Get current recommendation
-        recommendation = recommendation_service.get_current_recommendation()
-        
-        logger.info(f"Recommendation generated: {recommendation.action} with {recommendation.confidence:.1f}% confidence")
+
+        recommendation = await asyncio.to_thread(
+            recommendation_service.get_current_recommendation
+        )
+
+        logger.info(
+            f"Recommendation generated: {recommendation.action} with {recommendation.confidence:.1f}% confidence"
+        )
         return recommendation
-        
+
     except Exception as e:
         logger.error(f"Error in recommendations endpoint: {e}")
         raise HTTPException(status_code=500, detail=f"Error generating recommendation: {str(e)}")

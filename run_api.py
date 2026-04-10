@@ -31,6 +31,7 @@ def main():
     print("  GET /api/v1/cost-impact          - Cost impact analysis")
     print("  GET /api/v1/risk-alerts          - Live risk alerts")
     print()
+    print("Web UI:     http://localhost:8000/")
     print("Starting server on http://localhost:8000")
     print("Press Ctrl+C to stop the server")
     print("=" * 80)

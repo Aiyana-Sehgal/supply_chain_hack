@@ -1,0 +1,1949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OptiFlow — AI-Powered Supply Chain Intelligence</title>
+  <meta name="description" content="OptiFlow predicts demand, detects disruptions, scores risk, and simulates decisions using a Digital Twin system. Real-time forecasting and intelligent decision-making unified in one platform." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    /* ===================== DESIGN TOKENS ===================== */
+    :root {
+      --bg: #FFF8F3;
+      --bg2: #FFF2E9;
+      --primary: #FF7A59;
+      --primary-light: #FF9578;
+      --secondary: #FFC3A0;
+      --accent: #6B8E8D;
+      --accent-light: #8AADAC;
+      --text: #1A1A2E;
+      --text-muted: #6B7280;
+      --text-light: #9CA3AF;
+      --risk-high: #E45757;
+      --risk-medium: #F6C445;
+      --risk-low: #4CAF50;
+      --glass: rgba(255, 248, 243, 0.72);
+      --glass-border: rgba(255, 122, 89, 0.15);
+      --shadow-sm: 0 2px 8px rgba(255, 122, 89, 0.08);
+      --shadow-md: 0 8px 32px rgba(255, 122, 89, 0.12);
+      --shadow-lg: 0 20px 60px rgba(255, 122, 89, 0.16);
+      --radius: 16px;
+      --radius-sm: 10px;
+      --radius-lg: 24px;
+    }
+
+    /* ===================== RESET & BASE ===================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+    h1, h2, h3, h4 { font-family: 'Outfit', sans-serif; line-height: 1.2; }
+
+    /* ===================== SCROLLBAR ===================== */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--secondary); border-radius: 3px; }
+
+    /* ===================== NAVIGATION ===================== */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 48px;
+      background: rgba(255, 248, 243, 0.82);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--glass-border);
+      box-shadow: 0 2px 20px rgba(255, 122, 89, 0.06);
+      transition: all 0.3s ease;
+    }
+    nav.scrolled {
+      padding: 12px 48px;
+      background: rgba(255, 248, 243, 0.95);
+      box-shadow: 0 4px 24px rgba(255, 122, 89, 0.1);
+    }
+    .nav-logo {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.5rem; font-weight: 800;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+    .nav-links {
+      display: flex; align-items: center; gap: 32px;
+      list-style: none;
+    }
+    .nav-links a {
+      text-decoration: none;
+      color: var(--text-muted);
+      font-size: 0.9rem; font-weight: 500;
+      transition: color 0.2s;
+      position: relative;
+    }
+    .nav-links a::after {
+      content: ''; position: absolute; bottom: -2px; left: 0; right: 0;
+      height: 2px; background: var(--primary);
+      transform: scaleX(0); transform-origin: center;
+      transition: transform 0.2s ease;
+    }
+    .nav-links a:hover { color: var(--primary); }
+    .nav-links a:hover::after { transform: scaleX(1); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: white; border: none; padding: 10px 24px;
+      border-radius: 50px; font-size: 0.9rem; font-weight: 600;
+      cursor: pointer; text-decoration: none;
+      display: inline-flex; align-items: center; gap: 6px;
+      transition: all 0.25s ease;
+      box-shadow: 0 4px 16px rgba(255, 122, 89, 0.35);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(255, 122, 89, 0.45);
+    }
+    .btn-secondary {
+      background: transparent;
+      color: var(--primary); border: 1.5px solid var(--primary);
+      padding: 10px 24px; border-radius: 50px;
+      font-size: 0.9rem; font-weight: 600; cursor: pointer;
+      text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+      transition: all 0.25s ease;
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 122, 89, 0.06);
+      transform: translateY(-2px);
+    }
+
+    /* ===================== HERO ===================== */
+    #hero {
+      position: relative; min-height: 100vh;
+      display: flex; align-items: center;
+      overflow: hidden;
+    }
+    #network-canvas {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      z-index: 0;
+    }
+    .hero-content {
+      position: relative; z-index: 2;
+      max-width: 600px; padding: 120px 48px 80px;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(255, 122, 89, 0.1);
+      border: 1px solid rgba(255, 122, 89, 0.2);
+      padding: 6px 16px; border-radius: 50px;
+      font-size: 0.8rem; font-weight: 600; color: var(--primary);
+      margin-bottom: 24px; letter-spacing: 0.5px;
+    }
+    .hero-badge .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--risk-low);
+      animation: pulse-dot 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+    .hero-headline {
+      font-size: clamp(2.4rem, 5vw, 3.8rem);
+      font-weight: 900; line-height: 1.1;
+      letter-spacing: -1px;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .hero-headline .highlight {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero-subtext {
+      font-size: 1.1rem; color: var(--text-muted);
+      margin-bottom: 36px; max-width: 480px; line-height: 1.7;
+    }
+    .hero-ctas {
+      display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 40px;
+    }
+    .hero-ctas .btn-primary { padding: 14px 32px; font-size: 1rem; }
+    .hero-ctas .btn-secondary { padding: 14px 32px; font-size: 1rem; }
+    .hero-trust {
+      display: flex; gap: 20px; flex-wrap: wrap;
+    }
+    .trust-chip {
+      display: flex; align-items: center; gap: 7px;
+      background: rgba(255, 255, 255, 0.6);
+      border: 1px solid rgba(107, 142, 141, 0.2);
+      padding: 8px 14px; border-radius: 8px;
+      font-size: 0.78rem; font-weight: 600; color: var(--accent);
+      backdrop-filter: blur(8px);
+    }
+    .trust-chip svg { opacity: 0.8; }
+
+    /* ===================== SECTIONS ===================== */
+    section { padding: 100px 48px; }
+    .section-tag {
+      display: inline-block;
+      background: rgba(255, 122, 89, 0.1);
+      color: var(--primary); padding: 6px 14px;
+      border-radius: 50px; font-size: 0.78rem; font-weight: 700;
+      letter-spacing: 1px; text-transform: uppercase; margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: clamp(1.9rem, 3.5vw, 2.8rem);
+      font-weight: 800; letter-spacing: -0.5px; margin-bottom: 16px;
+    }
+    .section-subtitle {
+      font-size: 1.05rem; color: var(--text-muted);
+      max-width: 520px; line-height: 1.7; margin-bottom: 56px;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+
+    /* ===================== FEATURE CARDS ===================== */
+    #features { background: var(--bg); }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+    }
+    .feature-card {
+      background: white;
+      border: 1px solid rgba(255, 122, 89, 0.1);
+      border-radius: var(--radius-lg);
+      padding: 36px 32px;
+      transition: all 0.3s ease;
+      position: relative; overflow: hidden;
+      opacity: 0; transform: translateY(30px);
+    }
+    .feature-card.visible {
+      animation: fadeUp 0.6s ease forwards;
+    }
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .feature-card:hover {
+      transform: translateY(-6px);
+      box-shadow: var(--shadow-lg);
+      border-color: rgba(255, 122, 89, 0.25);
+    }
+    .feature-card.featured {
+      background: linear-gradient(145deg, #FFF2E9, white);
+      border-color: var(--primary);
+      border-width: 1.5px;
+    }
+    .feature-card.featured::before {
+      content: 'Flagship'; position: absolute; top: 16px; right: 16px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white; font-size: 0.65rem; font-weight: 700;
+      padding: 4px 10px; border-radius: 50px; letter-spacing: 0.5px;
+    }
+    .feature-icon {
+      width: 52px; height: 52px; border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, rgba(255, 122, 89, 0.15), rgba(255, 195, 160, 0.15));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; margin-bottom: 20px;
+    }
+    .feature-card.featured .feature-icon {
+      background: linear-gradient(135deg, rgba(255, 122, 89, 0.25), rgba(255, 195, 160, 0.2));
+    }
+    .feature-card h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 10px; }
+    .feature-card p { font-size: 0.9rem; color: var(--text-muted); line-height: 1.6; }
+    .feature-icon-text {
+      font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 0.85rem;
+      letter-spacing: 0.06em; color: var(--primary);
+    }
+    .disruption-explainer {
+      font-size: 0.92rem; color: var(--text-muted); line-height: 1.65;
+      max-width: 720px; margin-bottom: 28px;
+    }
+    .step-accent {
+      width: 40px; height: 3px; border-radius: 2px; margin: 0 auto 16px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+    }
+
+    /* ===================== SIMULATOR ===================== */
+    #simulator {
+      background: linear-gradient(180deg, var(--bg2) 0%, var(--bg) 100%);
+    }
+    .sim-wrapper {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 48px;
+      align-items: start;
+    }
+    .sim-panel {
+      background: white;
+      border: 1px solid rgba(255, 122, 89, 0.12);
+      border-radius: var(--radius-lg);
+      padding: 40px 36px;
+      box-shadow: var(--shadow-sm);
+    }
+    .sim-panel h3 { font-size: 1.3rem; font-weight: 700; margin-bottom: 28px; color: var(--text); }
+    .sim-control { margin-bottom: 28px; }
+    .sim-control label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 0.9rem; font-weight: 600; color: var(--text); margin-bottom: 10px;
+    }
+    .sim-control label span { color: var(--primary); font-weight: 700; }
+    input[type="range"] {
+      width: 100%; height: 6px; appearance: none;
+      background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+      border-radius: 3px; outline: none; cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none; width: 18px; height: 18px;
+      border-radius: 50%; background: var(--primary);
+      box-shadow: 0 2px 8px rgba(255, 122, 89, 0.4);
+      cursor: pointer;
+    }
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 0; border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+    .toggle-row:last-of-type { border-bottom: none; }
+    .toggle-label { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+    .toggle-desc { font-size: 0.78rem; color: var(--text-muted); }
+    .toggle {
+      position: relative; width: 44px; height: 24px;
+      cursor: pointer;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; inset: 0; border-radius: 50px;
+      background: #E5E7EB; transition: all 0.3s ease;
+    }
+    .toggle-slider::before {
+      content: ''; position: absolute;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: white; top: 3px; left: 3px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+      transition: transform 0.3s ease;
+    }
+    .toggle input:checked + .toggle-slider { background: var(--primary); }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+    .sim-run-btn {
+      width: 100%; margin-top: 28px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: white; border: none; padding: 16px;
+      border-radius: var(--radius); font-size: 1rem; font-weight: 700;
+      cursor: pointer; letter-spacing: 0.3px;
+      transition: all 0.25s ease;
+      box-shadow: 0 4px 20px rgba(255, 122, 89, 0.35);
+    }
+    .sim-run-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(255, 122, 89, 0.45);
+    }
+    .sim-run-btn.running { animation: btn-pulse 0.8s ease-in-out infinite alternate; }
+    @keyframes btn-pulse { from { opacity: 1; } to { opacity: 0.8; } }
+
+    /* Result Panel */
+    .result-kpi {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;
+    }
+    .kpi-card {
+      background: var(--bg);
+      border-radius: var(--radius-sm);
+      padding: 20px 18px;
+      border: 1px solid rgba(255, 122, 89, 0.1);
+    }
+    .kpi-label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .kpi-value {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.5rem; font-weight: 800; color: var(--text);
+      transition: all 0.6s ease;
+    }
+    .kpi-value.animating { animation: countUp 0.6s ease; }
+    @keyframes countUp {
+      from { opacity: 0.3; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .kpi-delta { font-size: 0.78rem; margin-top: 4px; }
+    .kpi-delta.up { color: var(--risk-high); }
+    .kpi-delta.down { color: var(--risk-low); }
+
+    .recommendation-card {
+      background: linear-gradient(135deg, rgba(255, 122, 89, 0.06), rgba(107, 142, 141, 0.06));
+      border: 1px solid rgba(255, 122, 89, 0.15);
+      border-radius: var(--radius); padding: 24px;
+    }
+    .recommendation-card .rec-label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .recommendation-card .action {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.2rem; font-weight: 800; color: var(--primary);
+      margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .recommendation-card .rationale { font-size: 0.88rem; color: var(--text-muted); line-height: 1.6; }
+
+    /* ===================== CAUSE → EFFECT ===================== */
+    #disruption {
+      background: var(--bg);
+    }
+    .disruption-wrapper {
+      background: white;
+      border-radius: var(--radius-lg);
+      padding: 48px;
+      border: 1px solid rgba(255, 122, 89, 0.1);
+      box-shadow: var(--shadow-sm);
+    }
+    .disruption-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 40px; flex-wrap: wrap; gap: 20px;
+    }
+    .disruption-toggle-row {
+      display: flex; align-items: center; gap: 14px;
+    }
+    .disruption-toggle-label { font-size: 0.95rem; font-weight: 600; color: var(--text); }
+    .disruption-states {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 32px;
+    }
+    .state-panel { border-radius: var(--radius); padding: 28px; position: relative; overflow: hidden; }
+    .state-panel.before { background: linear-gradient(135deg, #F0FFF4, #DCFCE7); border: 1px solid rgba(76, 175, 80, 0.3); }
+    .state-panel.after { background: linear-gradient(135deg, #FFF5F5, #FEE2E2); border: 1px solid rgba(228, 87, 87, 0.3); transition: all 0.6s ease; }
+    .state-panel.after.disrupted { background: linear-gradient(135deg, #FFF0E0, #FDEBD0); border-color: rgba(246, 196, 69, 0.4); }
+    .state-label {
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+    .state-panel.before .state-label { color: var(--risk-low); }
+    .state-panel.after .state-label { color: var(--risk-high); }
+    .state-panel.after.disrupted .state-label { color: #E8943A; }
+    .state-metric { margin-bottom: 14px; }
+    .state-metric .m-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 3px; }
+    .state-metric .m-value { font-family: 'Outfit', sans-serif; font-size: 1.2rem; font-weight: 700; }
+    .progress-bar {
+      height: 6px; border-radius: 3px; background: rgba(0,0,0,0.06);
+      margin-top: 6px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; border-radius: 3px;
+      transition: width 1s ease, background 0.6s ease;
+    }
+    .state-panel.before .progress-fill { background: var(--risk-low); }
+    .state-panel.after .progress-fill { background: var(--risk-high); }
+    .state-panel.after.disrupted .progress-fill { background: var(--risk-medium); }
+
+    /* ===================== DASHBOARD ===================== */
+    #dashboard { background: var(--bg2); }
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      grid-template-rows: auto auto;
+      gap: 24px;
+    }
+    .dash-card {
+      background: white;
+      border-radius: var(--radius-lg);
+      padding: 32px 28px;
+      border: 1px solid rgba(255, 122, 89, 0.08);
+      box-shadow: var(--shadow-sm);
+    }
+    .dash-card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 20px; }
+    .dash-chart-wrap { height: 220px; position: relative; }
+    .kpi-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .kpi-mini {
+      background: var(--bg);
+      border-radius: var(--radius-sm);
+      padding: 20px 16px;
+      border: 1px solid rgba(255, 122, 89, 0.08);
+    }
+    .kpi-mini .label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .kpi-mini .val { font-family: 'Outfit', sans-serif; font-size: 1.6rem; font-weight: 800; color: var(--text); }
+    .kpi-mini .sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+    .risk-map-container { min-height: 200px; position: relative; }
+    .heatmap-legend { display: flex; gap: 16px; margin-top: 12px; flex-wrap: wrap; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-muted); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* ===================== INDIA SVG MAP ===================== */
+    #india-map {
+      width: 100%; max-height: 210px;
+    }
+    .map-region {
+      cursor: pointer;
+      stroke: white; stroke-width: 1.5;
+      transition: all 0.3s ease;
+    }
+    .map-region:hover { filter: brightness(1.1); }
+    .map-tooltip {
+      position: absolute; background: rgba(26, 26, 46, 0.9);
+      color: white; padding: 8px 12px; border-radius: 8px;
+      font-size: 0.75rem; pointer-events: none; z-index: 10;
+      opacity: 0; transition: opacity 0.2s;
+    }
+
+    /* ===================== AI RECOMMENDATION ===================== */
+    #ai-recommendation { background: var(--bg); }
+    .rec-wrapper {
+      display: grid; grid-template-columns: 1fr 1.4fr; gap: 48px; align-items: start;
+    }
+    .confidence-ring-wrap { text-align: center; }
+    .confidence-ring-wrap canvas { max-width: 200px; }
+    .confidence-label { font-size: 2.5rem; font-weight: 800; font-family: 'Outfit', sans-serif; color: var(--text); margin-top: -20px; }
+    .confidence-sub { font-size: 0.85rem; color: var(--text-muted); }
+    .rec-details {
+      background: white;
+      border-radius: var(--radius-lg); padding: 36px 32px;
+      border: 1px solid rgba(255, 122, 89, 0.1);
+      box-shadow: var(--shadow-sm);
+    }
+    .action-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: white; padding: 8px 20px; border-radius: 50px;
+      font-size: 0.85rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .rec-section { margin-bottom: 24px; }
+    .rec-section h4 { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+    .rec-section p { font-size: 0.92rem; color: var(--text); line-height: 1.7; }
+    .risk-factor {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 14px 8px 12px; border-radius: 8px;
+      background: rgba(228, 87, 87, 0.07);
+      margin-bottom: 8px; font-size: 0.85rem; color: var(--text);
+      border-left: 3px solid rgba(228, 87, 87, 0.35);
+    }
+
+    /* ===================== LIVE ALERTS ===================== */
+    #alerts { background: var(--bg2); }
+    .alerts-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 32px; flex-wrap: wrap; gap: 16px; }
+    .alerts-stats { display: flex; gap: 16px; }
+    .alert-stat {
+      background: white; border-radius: 10px; padding: 12px 18px;
+      border: 1px solid rgba(255, 122, 89, 0.1);
+      text-align: center;
+    }
+    .alert-stat .num { font-family: 'Outfit', sans-serif; font-size: 1.4rem; font-weight: 800; }
+    .alert-stat .lbl { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .alert-stat.critical .num { color: var(--risk-high); }
+    .alert-stat.high .num { color: #E8943A; }
+    .alert-stat.medium .num { color: var(--risk-medium); }
+    .alerts-list { display: flex; flex-direction: column; gap: 14px; max-height: 520px; overflow-y: auto; padding-right: 4px; }
+    .alert-item {
+      background: white;
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      border: 1px solid rgba(255, 122, 89, 0.08);
+      border-left: 4px solid;
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+      transition: transform 0.2s, box-shadow 0.2s;
+      animation: slideIn 0.4s ease;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-20px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    .alert-item:hover { transform: translateX(4px); box-shadow: var(--shadow-sm); }
+    .alert-item[data-severity="critical"] { border-left-color: var(--risk-high); }
+    .alert-item[data-severity="high"] { border-left-color: #E8943A; }
+    .alert-item[data-severity="medium"] { border-left-color: var(--risk-medium); }
+    .alert-item[data-severity="low"] { border-left-color: var(--risk-low); }
+    .alert-body .alert-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
+    .alert-body .alert-msg { font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; }
+    .alert-body .alert-region { font-size: 0.75rem; color: var(--accent); font-weight: 600; margin-top: 6px; }
+    .alert-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+    .severity-tag {
+      padding: 4px 10px; border-radius: 50px;
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .severity-tag.critical { background: rgba(228, 87, 87, 0.12); color: var(--risk-high); }
+    .severity-tag.high { background: rgba(232, 148, 58, 0.12); color: #E8943A; }
+    .severity-tag.medium { background: rgba(246, 196, 69, 0.15); color: #C49A00; }
+    .severity-tag.low { background: rgba(76, 175, 80, 0.12); color: var(--risk-low); }
+    .alert-time { font-size: 0.75rem; color: var(--text-light); }
+    .alert-pulse {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 6px;
+      animation: alertPulse 2s ease-in-out infinite;
+    }
+    .alert-pulse.critical { background: var(--risk-high); }
+    .alert-pulse.high { background: #E8943A; }
+    .alert-pulse.medium { background: var(--risk-medium); }
+    .alert-pulse.low { background: var(--risk-low); }
+    @keyframes alertPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(228, 87, 87, 0.4); }
+      50% { box-shadow: 0 0 0 6px rgba(228, 87, 87, 0); }
+    }
+
+    /* ===================== HOW IT WORKS ===================== */
+    #how-it-works { background: var(--bg); }
+    .steps-row {
+      display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; gap: 0;
+    }
+    .step-card {
+      background: white;
+      border-radius: var(--radius-lg); padding: 36px 28px;
+      border: 1px solid rgba(255, 122, 89, 0.1);
+      text-align: center;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .step-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-md); }
+    .step-num {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white; font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 1rem;
+      display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;
+    }
+    .step-icon { font-size: 2.2rem; margin-bottom: 14px; }
+    .step-card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 10px; }
+    .step-card p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; }
+    .step-connector {
+      display: flex; align-items: center; padding: 0 16px;
+    }
+    .connector-line {
+      flex: 1; height: 2px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      position: relative;
+    }
+    .connector-arrow {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--primary);
+      animation: connectorPulse 2s ease-in-out infinite;
+    }
+    @keyframes connectorPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.7; }
+    }
+
+    /* ===================== FINAL CTA ===================== */
+    #final-cta {
+      background: linear-gradient(135deg, #FFF2E9, var(--bg));
+      text-align: center;
+    }
+    .cta-inner {
+      max-width: 640px; margin: 0 auto;
+    }
+    .cta-inner h2 { font-size: clamp(2rem, 4vw, 3rem); font-weight: 900; letter-spacing: -0.5px; margin-bottom: 20px; }
+    .cta-inner p { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 40px; line-height: 1.7; }
+    .cta-inner .btn-primary { padding: 18px 48px; font-size: 1.05rem; }
+
+    /* ===================== FOOTER ===================== */
+    footer {
+      background: var(--text);
+      color: rgba(255,255,255,0.6);
+      padding: 40px 48px; text-align: center;
+      font-size: 0.85rem;
+    }
+    footer strong { color: white; }
+
+    /* ===================== STATUS INDICATOR ===================== */
+    .api-status {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.75rem; font-weight: 600;
+    }
+    .api-status .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+    }
+    .api-status.connected .dot { background: var(--risk-low); animation: pulse-dot 2s infinite; }
+    .api-status.disconnected .dot { background: var(--risk-medium); }
+    .api-status.connected { color: var(--risk-low); }
+    .api-status.disconnected { color: var(--risk-medium); }
+
+    /* ===================== LOADING STATE ===================== */
+    .loading-shimmer {
+      background: linear-gradient(90deg, rgba(255, 122, 89, 0.06) 25%, rgba(255, 122, 89, 0.12) 50%, rgba(255, 122, 89, 0.06) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 8px;
+    }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+
+    /* ===================== SCROLL REVEAL ===================== */
+    .reveal {
+      opacity: 0; transform: translateY(40px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+
+    /* ===================== RESPONSIVE ===================== */
+    @media (max-width: 900px) {
+      nav { padding: 16px 24px; }
+      .nav-links { display: none; }
+      section { padding: 70px 24px; }
+      .sim-wrapper, .rec-wrapper, .disruption-states, .dashboard-grid { grid-template-columns: 1fr; }
+      .steps-row { grid-template-columns: 1fr; gap: 16px; }
+      .step-connector { display: none; }
+      .hero-content { padding: 120px 24px 80px; }
+      .disruption-wrapper { padding: 28px 24px; }
+      .kpi-row { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- =================== NAVIGATION =================== -->
+<nav id="main-nav">
+  <div class="nav-logo">OptiFlow</div>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#simulator">Simulator</a></li>
+    <li><a href="#dashboard">Dashboard</a></li>
+    <li><a href="#alerts">Alerts</a></li>
+    <li><a href="#how-it-works">How It Works</a></li>
+  </ul>
+  <div style="display:flex; align-items:center; gap:16px;">
+    <div class="api-status disconnected" id="api-status-indicator">
+      <div class="dot"></div>
+      <span id="api-status-text">Connecting...</span>
+    </div>
+    <a href="#dashboard" class="btn-primary" id="nav-cta">Launch Dashboard</a>
+  </div>
+</nav>
+
+<!-- =================== HERO =================== -->
+<section id="hero">
+  <canvas id="network-canvas"></canvas>
+  <div class="hero-content">
+    <div class="hero-badge">
+      <div class="dot"></div>
+      AI Intelligence System • Live
+    </div>
+    <h1 class="hero-headline">
+      Predict.<br><span class="highlight">Prevent.</span><br>Optimize.
+    </h1>
+    <p style="font-size:1.05rem; font-weight:700; color:var(--text); margin-bottom:8px; font-family:'Outfit',sans-serif;">AI-Powered Supply Chains for a Disrupted World.</p>
+    <p class="hero-subtext">Real-time forecasting, disruption detection, and intelligent decision-making — unified in one system.</p>
+    <div class="hero-ctas">
+      <a href="#dashboard" class="btn-primary">Launch Dashboard</a>
+      <a href="#simulator" class="btn-secondary">Run Simulation</a>
+    </div>
+    <div class="hero-trust">
+      <div class="trust-chip">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        Live Risk Monitoring
+      </div>
+      <div class="trust-chip">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        India Hyperlocal Alerts
+      </div>
+      <div class="trust-chip">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        Digital Twin Ready
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================== FEATURES =================== -->
+<section id="features">
+  <div class="container">
+    <div class="section-tag">Core Capabilities</div>
+    <h2 class="section-title">Intelligence at Every Layer</h2>
+    <p class="section-subtitle reveal">Four AI systems working in concert to predict, detect, and optimize your supply chain — automatically.</p>
+    <div class="features-grid">
+      <div class="feature-card reveal reveal-delay-1">
+        <div class="feature-icon"><span class="feature-icon-text">DF</span></div>
+        <h3>Demand Forecasting</h3>
+        <p>XGBoost-powered multi-horizon forecasting trained on historical sales data. Predicts monthly demand with rolling trend analysis across lag features.</p>
+      </div>
+      <div class="feature-card reveal reveal-delay-2">
+        <div class="feature-icon"><span class="feature-icon-text">RI</span></div>
+        <h3>Risk Intelligence</h3>
+        <p>Composite risk scoring fusing supplier stability, weather disruption signals, and news-based disruption events. Alerts when thresholds are exceeded.</p>
+      </div>
+      <div class="feature-card featured reveal reveal-delay-3">
+        <div class="feature-icon"><span class="feature-icon-text">SC</span></div>
+        <h3>Scenario Simulator</h3>
+        <p>Digital Twin engine that lets you apply what-if conditions — demand spikes, supplier failures, weather disruptions — and instantly projects the full impact.</p>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon"><span class="feature-icon-text">DE</span></div>
+        <h3>AI Decision Engine</h3>
+        <p>Q-learning reinforcement agent trained to recommend optimal actions: reorder stock, switch supplier, reroute shipment, or emergency restock.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================== SIMULATOR =================== -->
+<section id="simulator">
+  <div class="container">
+    <div class="section-tag">Digital Twin</div>
+    <h2 class="section-title reveal">Simulate the Future<br>Before It Happens</h2>
+    <p class="section-subtitle reveal">Apply real-world disruption scenarios and see the system's projected impact and recommended response — in real time.</p>
+    <div class="sim-wrapper">
+      <!-- Left: Controls -->
+      <div class="sim-panel reveal">
+        <h3>Configure Scenario</h3>
+        <div class="sim-control">
+          <label>Demand Spike <span id="demand-spike-val">+0%</span></label>
+          <input type="range" id="demand-spike" min="-40" max="80" value="0" step="5" />
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Supplier Failure</div>
+            <div class="toggle-desc">Force primary supplier risk to critical</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="supplier-failure" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Transport Delay</div>
+            <div class="toggle-desc">Activate logistics disruption signal</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="transport-delay" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Weather Disruption</div>
+            <div class="toggle-desc">India regional weather risk event</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="weather-disruption" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <button class="sim-run-btn" id="run-simulation">Run simulation</button>
+      </div>
+      <!-- Right: Results -->
+      <div class="sim-panel reveal reveal-delay-2">
+        <h3>Projected Impact</h3>
+        <div class="result-kpi">
+          <div class="kpi-card">
+            <div class="kpi-label">Cost Impact</div>
+            <div class="kpi-value" id="sim-cost">₹0</div>
+            <div class="kpi-delta" id="sim-cost-delta">Awaiting simulation</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Stockout Risk</div>
+            <div class="kpi-value" id="sim-stockout">—</div>
+            <div class="kpi-delta" id="sim-stockout-delta">Awaiting simulation</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Delay Probability</div>
+            <div class="kpi-value" id="sim-delay">—</div>
+            <div class="kpi-delta" id="sim-delay-delta">Awaiting simulation</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Demand Change</div>
+            <div class="kpi-value" id="sim-demand">+0%</div>
+            <div class="kpi-delta" id="sim-demand-delta">From baseline</div>
+          </div>
+        </div>
+        <div class="recommendation-card">
+          <div class="rec-label">Recommended action</div>
+          <div class="action" id="sim-action">AWAITING SIMULATION</div>
+          <div class="rationale" id="sim-rationale">Configure parameters and run the simulation to see projected impact and the recommended playbook response.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================== DISRUPTION TOGGLE =================== -->
+<section id="disruption">
+  <div class="container">
+    <div class="section-tag">Signature Feature</div>
+    <h2 class="section-title reveal">Cause and effect intelligence</h2>
+    <p class="section-subtitle reveal">Compare a stable reference snapshot of the network against a stressed projection.</p>
+    <p class="disruption-explainer reveal">The left panel shows the <strong>reference baseline</strong> from your latest successful dashboard load (regional risk and disruption signals). The right panel normally <strong>mirrors</strong> that baseline. Turn on <strong>Apply disruption model</strong> to stress-test the network: higher supplier stress, lower route capacity, higher stockout exposure, and the playbook action that fits that stressed state.</p>
+    <div class="disruption-wrapper reveal">
+      <div class="disruption-header">
+        <h3 style="font-size:1.3rem; font-weight:700;">Network state comparison</h3>
+        <div class="disruption-toggle-row">
+          <span class="disruption-toggle-label">Apply disruption model</span>
+          <label class="toggle">
+            <input type="checkbox" id="disruption-toggle" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+      <div class="disruption-states">
+        <div class="state-panel before">
+          <div class="state-label">Reference baseline</div>
+          <div class="state-metric">
+            <div class="m-label">Supplier stress (avg. regional risk)</div>
+            <div class="m-value" id="ns-ref-supplier">18%</div>
+            <div class="progress-bar"><div class="progress-fill" id="ns-ref-supplier-bar" style="width:18%"></div></div>
+          </div>
+          <div class="state-metric">
+            <div class="m-label">Route capacity index</div>
+            <div class="m-value" id="ns-ref-route-label">94% nominal</div>
+            <div class="progress-bar"><div class="progress-fill" id="ns-ref-route-bar" style="width:94%"></div></div>
+          </div>
+          <div class="state-metric">
+            <div class="m-label">Stockout exposure (model)</div>
+            <div class="m-value" id="ns-ref-stockout" style="color:var(--risk-low)">Low (7%)</div>
+            <div class="progress-bar"><div class="progress-fill" id="ns-ref-stockout-bar" style="width:7%"></div></div>
+          </div>
+          <div class="state-metric">
+            <div class="m-label">Recommended playbook action</div>
+            <div class="m-value" id="ns-ref-action" style="font-size:0.95rem; color:var(--risk-low)">Monitor only</div>
+          </div>
+        </div>
+        <div class="state-panel after" id="disruption-after">
+          <div class="state-label" id="disruption-after-label">Projected network view</div>
+          <div class="state-metric">
+            <div class="m-label">Supplier stress (avg. regional risk)</div>
+            <div class="m-value" id="d-supplier-risk">18%</div>
+            <div class="progress-bar"><div class="progress-fill" id="d-supplier-bar" style="width:18%"></div></div>
+          </div>
+          <div class="state-metric">
+            <div class="m-label">Route capacity index</div>
+            <div class="m-value" id="d-route">94% nominal</div>
+            <div class="progress-bar"><div class="progress-fill" id="d-route-bar" style="width:94%"></div></div>
+          </div>
+          <div class="state-metric">
+            <div class="m-label">Stockout exposure (model)</div>
+            <div class="m-value" id="d-stockout" style="color:var(--risk-low)">Low (7%)</div>
+            <div class="progress-bar"><div class="progress-fill" id="d-stockout-bar" style="width:7%"></div></div>
+          </div>
+          <div class="state-metric">
+            <div class="m-label">Recommended playbook action</div>
+            <div class="m-value" id="d-action" style="font-size:0.95rem; color:var(--risk-low)">Monitor only</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================== DASHBOARD =================== -->
+<section id="dashboard">
+  <div class="container">
+    <div class="section-tag">Live Dashboard</div>
+    <h2 class="section-title reveal">Executive Intelligence Hub</h2>
+    <p class="section-subtitle reveal">Real-time metrics powered by XGBoost forecasting and composite risk models.</p>
+    <div class="dashboard-grid">
+      <!-- Forecast Chart -->
+      <div class="dash-card reveal" style="grid-row: span 1;">
+        <h3>Demand forecast</h3>
+        <div class="dash-chart-wrap">
+          <canvas id="forecast-chart"></canvas>
+        </div>
+      </div>
+      <!-- KPIs -->
+      <div class="dash-card reveal reveal-delay-1">
+        <h3>Key metrics</h3>
+        <div class="kpi-row">
+          <div class="kpi-mini">
+            <div class="label">Predicted Demand</div>
+            <div class="val" id="kpi-demand">—</div>
+            <div class="sub">units / month</div>
+          </div>
+          <div class="kpi-mini">
+            <div class="label">Risk Score</div>
+            <div class="val" id="kpi-risk">—</div>
+            <div class="sub">composite index</div>
+          </div>
+          <div class="kpi-mini">
+            <div class="label">Cost Impact</div>
+            <div class="val" id="kpi-cost">—</div>
+            <div class="sub">projected change</div>
+          </div>
+          <div class="kpi-mini">
+            <div class="label">Delay Probability</div>
+            <div class="val" id="kpi-delay">—</div>
+            <div class="sub">logistics risk</div>
+          </div>
+        </div>
+      </div>
+      <!-- India Risk Map -->
+      <div class="dash-card reveal" style="grid-column: span 2;">
+        <h3>India risk heatmap</h3>
+        <div class="risk-map-container">
+          <div class="map-tooltip" id="map-tooltip"></div>
+          <svg id="india-map" viewBox="50 0 650 500" xmlns="http://www.w3.org/2000/svg">
+            <!-- Simplified India regions as SVG paths -->
+            <!-- North India -->
+            <path id="region-north" class="map-region" data-region="North India"
+              d="M200,40 L380,40 L400,80 L380,120 L300,140 L200,120 L180,80 Z"
+              fill="#F6C445" />
+            <!-- South India -->
+            <path id="region-south" class="map-region" data-region="South India"
+              d="M220,300 L380,300 L360,380 L300,440 L240,410 L200,360 Z"
+              fill="#E45757" />
+            <!-- East India -->
+            <path id="region-east" class="map-region" data-region="East India"
+              d="M380,140 L480,120 L520,200 L480,280 L380,300 L360,220 Z"
+              fill="#4CAF50" />
+            <!-- West India -->
+            <path id="region-west" class="map-region" data-region="West India"
+              d="M100,140 L200,120 L220,300 L160,340 L80,260 L90,200 Z"
+              fill="#F6C445" />
+            <!-- Central India -->
+            <path id="region-central" class="map-region" data-region="Central India"
+              d="M200,140 L380,140 L380,300 L220,300 Z"
+              fill="#FF7A59" opacity="0.85" />
+            <!-- Northeast India -->
+            <path id="region-northeast" class="map-region" data-region="Northeast India"
+              d="M480,80 L580,60 L620,140 L560,180 L480,140 Z"
+              fill="#4CAF50" />
+            <!-- Region labels -->
+            <text x="295" y="90" text-anchor="middle" font-size="13" fill="white" font-weight="600" font-family="Inter">North</text>
+            <text x="295" y="390" text-anchor="middle" font-size="13" fill="white" font-weight="600" font-family="Inter">South</text>
+            <text x="435" y="215" text-anchor="middle" font-size="13" fill="white" font-weight="600" font-family="Inter">East</text>
+            <text x="142" y="230" text-anchor="middle" font-size="13" fill="white" font-weight="600" font-family="Inter">West</text>
+            <text x="295" y="230" text-anchor="middle" font-size="13" fill="white" font-weight="600" font-family="Inter">Central</text>
+            <text x="545" y="125" text-anchor="middle" font-size="11" fill="white" font-weight="600" font-family="Inter">NE</text>
+          </svg>
+        </div>
+        <div class="heatmap-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--risk-low)"></div>Low Risk</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--risk-medium)"></div>Medium Risk</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--primary)"></div>High Risk</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--risk-high)"></div>Critical</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================== AI RECOMMENDATION =================== -->
+<section id="ai-recommendation">
+  <div class="container">
+    <div class="section-tag">AI Decision Engine</div>
+    <h2 class="section-title reveal">Intelligent Recommendations</h2>
+    <p class="section-subtitle reveal">Q-learning reinforcement agent analyzing 9-dimensional state space to recommend optimal supply chain actions.</p>
+    <div class="rec-wrapper">
+      <div class="confidence-ring-wrap reveal">
+        <canvas id="confidence-chart" width="200" height="200"></canvas>
+        <div class="confidence-label" id="confidence-val">—%</div>
+        <div class="confidence-sub">Model confidence</div>
+        <div style="margin-top:24px;">
+          <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:8px;">ALTERNATIVE ACTIONS CONSIDERED</div>
+          <div id="alternatives-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+        </div>
+      </div>
+      <div class="rec-details reveal reveal-delay-1">
+        <div class="action-badge" id="rec-action">LOADING...</div>
+        <div class="rec-section">
+          <h4>Decision Rationale</h4>
+          <p id="rec-rationale">Analyzing current supply chain state...</p>
+        </div>
+        <div class="rec-section">
+          <h4>Explanation</h4>
+          <p id="rec-explanation">Generating explainability summary from XAI module...</p>
+        </div>
+        <div class="rec-section">
+          <h4>Risk Factors</h4>
+          <div id="risk-factors-list">
+            <div class="risk-factor loading-shimmer" style="height:36px; width:100%; background-clip:border-box;"></div>
+          </div>
+        </div>
+        <div class="rec-section">
+          <h4>Implementation Timeline</h4>
+          <p id="rec-time" style="color:var(--accent); font-weight:600;">—</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================== LIVE ALERTS =================== -->
+<section id="alerts">
+  <div class="container">
+    <div class="alerts-header">
+      <div>
+        <div class="section-tag">Live Intelligence</div>
+        <h2 class="section-title reveal" style="margin-bottom:0">Risk Alert System</h2>
+      </div>
+      <div class="alerts-stats">
+        <div class="alert-stat critical"><div class="num" id="count-critical">—</div><div class="lbl">Critical</div></div>
+        <div class="alert-stat high"><div class="num" id="count-high">—</div><div class="lbl">High</div></div>
+        <div class="alert-stat medium"><div class="num" id="count-medium">—</div><div class="lbl">Medium</div></div>
+      </div>
+    </div>
+    <div class="alerts-list" id="alerts-list">
+      <div class="alert-item" style="border-left-color:#ddd;">
+        <div class="alert-body">
+          <div class="alert-title loading-shimmer" style="height:18px; width:200px; margin-bottom:8px;"></div>
+          <div class="alert-msg loading-shimmer" style="height:14px; width:320px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================== HOW IT WORKS =================== -->
+<section id="how-it-works">
+  <div class="container">
+    <div class="section-tag">System Pipeline</div>
+    <h2 class="section-title reveal" style="text-align:center">How OptiFlow Thinks</h2>
+    <p class="section-subtitle reveal" style="text-align:center; margin:0 auto 56px;">Four intelligent layers process raw signals into actionable decisions automatically.</p>
+    <div class="steps-row">
+      <div class="step-card reveal">
+        <div class="step-num">1</div>
+        <div class="step-accent" aria-hidden="true"></div>
+        <h3>Data Ingestion</h3>
+        <p>Historical sales, supplier inventory, WeatherAPI signals, and India-focused news headlines from NewsData.io are collected and unified.</p>
+      </div>
+      <div class="step-connector reveal">
+        <div class="connector-line"></div>
+        <div class="connector-arrow"></div>
+        <div class="connector-line"></div>
+      </div>
+      <div class="step-card reveal reveal-delay-1">
+        <div class="step-num">2</div>
+        <div class="step-accent" aria-hidden="true"></div>
+        <h3>AI Processing</h3>
+        <p>XGBoost forecasts demand. Feature engineering computes composite risk scores. The RL agent evaluates the 9-dimensional state space.</p>
+      </div>
+      <div class="step-connector reveal reveal-delay-1">
+        <div class="connector-line"></div>
+        <div class="connector-arrow"></div>
+        <div class="connector-line"></div>
+      </div>
+      <div class="step-card reveal reveal-delay-2">
+        <div class="step-num">3</div>
+        <div class="step-accent" aria-hidden="true"></div>
+        <h3>Smart Decisions</h3>
+        <p>Q-learning agent selects optimal action with confidence scoring. XAI system generates human-readable explanations for every recommendation.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================== FINAL CTA =================== -->
+<section id="final-cta">
+  <div class="container">
+    <div class="cta-inner reveal">
+      <div class="section-tag" style="display:block; text-align:center; margin:0 auto 20px;">Get Started Now</div>
+      <h2>Take Control of Your<br><span style="background:linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">Supply Chain Today</span></h2>
+      <p>OptiFlow's AI layer is continuously sensing, analyzing, and adapting — so your operations never miss a beat.</p>
+      <a href="#dashboard" class="btn-primary" style="font-size:1.1rem; padding:18px 52px;">
+        Open dashboard
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- =================== FOOTER =================== -->
+<footer>
+  <strong>OptiFlow</strong> — AI-Powered Supply Chain Intelligence &nbsp;·&nbsp;
+  Powered by XGBoost + Q-Learning + Digital Twin &nbsp;·&nbsp;
+  India Hyperlocal Intelligence
+</footer>
+
+<!-- =================== SCRIPTS =================== -->
+<script>
+// ============ CONFIGURATION ============
+// Same-origin when UI is served from the API (http://localhost:8000/); fallback for file:// opens.
+const API_ORIGIN = (window.location.protocol === 'http:' || window.location.protocol === 'https:')
+  ? window.location.origin
+  : 'http://localhost:8000';
+const API_BASE = API_ORIGIN + '/api/v1';
+let apiConnected = false;
+
+// ============ UTILITY FUNCTIONS ============
+function formatNumber(n) {
+  if (!n && n !== 0) return '—';
+  if (Math.abs(n) >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (Math.abs(n) >= 1e3) return (n/1e3).toFixed(1) + 'K';
+  return Math.round(n).toLocaleString();
+}
+function fmt(n, decimals = 1) { return (n * 100).toFixed(decimals) + '%'; }
+
+function formatActionLabel(action) {
+  if (action == null || action === '') return 'UNKNOWN';
+  return String(action).replaceAll('_', ' ').toUpperCase();
+}
+
+/** Predicted demand (units/mo) from cost breakdown: Transportation = demand * 0.05 in CostService */
+function estimatedDemandFromDashboard(data) {
+  const ci = data && data.cost_impact;
+  if (ci && Array.isArray(ci.breakdown)) {
+    const trans = ci.breakdown.find(b => b.category === 'Transportation Costs');
+    if (trans && trans.current_cost > 0) return trans.current_cost / 0.05;
+  }
+  return null;
+}
+
+function averageRegionField(regions, key) {
+  if (!regions || !regions.length) return null;
+  let s = 0;
+  regions.forEach(r => { s += Number(r[key]) || 0; });
+  return s / regions.length;
+}
+
+// ----- Network state comparison (reference vs projected / disruption stress) -----
+let networkComparisonBaseline = null;
+
+function defaultNetworkBaseline() {
+  return {
+    supplierPct: 18,
+    routeCapacityPct: 94,
+    routeLabel: '94% nominal',
+    stockoutPct: 7,
+    actionText: 'Monitor only',
+    actionColor: 'var(--risk-low)'
+  };
+}
+
+function stockoutExposureMeta(pct) {
+  const p = Math.max(0, Math.min(100, Math.round(pct)));
+  if (p < 22) return { label: 'Low', color: 'var(--risk-low)' };
+  if (p < 50) return { label: 'Medium', color: 'var(--risk-medium)' };
+  return { label: 'High', color: 'var(--risk-high)' };
+}
+
+function playbookActionColor(actionText) {
+  const u = (actionText || '').toUpperCase();
+  if (u.includes('EMERGENCY')) return 'var(--risk-high)';
+  if (u.includes('SWITCH') || u.includes('REROUTE')) return 'var(--risk-medium)';
+  if (u.includes('REORDER')) return 'var(--primary)';
+  return 'var(--risk-low)';
+}
+
+function computeNetworkBaselineFromDashboard(data) {
+  const regions = data && data.risk_heatmap && data.risk_heatmap.regions;
+  if (!regions || !regions.length) return null;
+  let sumRisk = 0;
+  let sumDis = 0;
+  regions.forEach(r => {
+    sumRisk += Number(r.risk_score) || 0;
+    sumDis += Number(r.disruption_signal) || 0;
+  });
+  const n = regions.length;
+  const avgRisk = sumRisk / n;
+  const avgDis = sumDis / n;
+  const supplierPct = Math.min(95, Math.round(avgRisk * 100));
+  const routeCapacityPct = Math.max(22, Math.min(100, Math.round((1 - Math.min(1, avgDis * 0.92)) * 100)));
+  const stockoutPct = Math.min(88, Math.round(avgRisk * 34 + avgDis * 38));
+  const rec = data.recommendations;
+  const actionText = rec && rec.action ? formatActionLabel(rec.action) : 'Monitor only';
+  return {
+    supplierPct,
+    routeCapacityPct,
+    routeLabel: routeCapacityPct + '% nominal',
+    stockoutPct,
+    actionText,
+    actionColor: playbookActionColor(actionText)
+  };
+}
+
+function paintReferencePanel(b) {
+  const stock = stockoutExposureMeta(b.stockoutPct);
+  document.getElementById('ns-ref-supplier').textContent = b.supplierPct + '%';
+  document.getElementById('ns-ref-supplier-bar').style.width = b.supplierPct + '%';
+  document.getElementById('ns-ref-route-label').textContent = b.routeLabel;
+  document.getElementById('ns-ref-route-bar').style.width = b.routeCapacityPct + '%';
+  const refStock = document.getElementById('ns-ref-stockout');
+  refStock.textContent = stock.label + ' (' + b.stockoutPct + '%)';
+  refStock.style.color = stock.color;
+  document.getElementById('ns-ref-stockout-bar').style.width = Math.max(5, b.stockoutPct) + '%';
+  const refAct = document.getElementById('ns-ref-action');
+  refAct.textContent = b.actionText;
+  refAct.style.color = b.actionColor || playbookActionColor(b.actionText);
+}
+
+function paintProjectedPanel(b) {
+  const stock = stockoutExposureMeta(b.stockoutPct);
+  document.getElementById('d-supplier-risk').textContent = b.supplierPct + '%';
+  document.getElementById('d-supplier-bar').style.width = b.supplierPct + '%';
+  document.getElementById('d-route').textContent = b.routeLabel;
+  document.getElementById('d-route-bar').style.width = b.routeCapacityPct + '%';
+  const ds = document.getElementById('d-stockout');
+  ds.textContent = stock.label + ' (' + b.stockoutPct + '%)';
+  ds.style.color = stock.color;
+  document.getElementById('d-stockout-bar').style.width = Math.max(5, b.stockoutPct) + '%';
+  const da = document.getElementById('d-action');
+  da.textContent = b.actionText;
+  da.style.color = b.actionColor || playbookActionColor(b.actionText);
+}
+
+function applyDisruptionStress(base) {
+  const supplierPct = Math.min(94, base.supplierPct + Math.round(34 + base.stockoutPct * 0.12));
+  const routeCapacityPct = Math.min(46, Math.max(28, Math.round(base.routeCapacityPct * 0.38)));
+  const stockoutPct = Math.min(
+    88,
+    Math.round(base.stockoutPct + 36 + (100 - base.routeCapacityPct) * 0.18)
+  );
+  let actionKey = 'reroute_shipment';
+  if (supplierPct >= 84) actionKey = 'switch_supplier';
+  if (stockoutPct >= 70 && base.stockoutPct < 48) actionKey = 'emergency_restock';
+  const actionText = formatActionLabel(actionKey);
+  return {
+    supplierPct,
+    routeCapacityPct,
+    routeLabel: routeCapacityPct + '% constrained',
+    stockoutPct,
+    actionText,
+    actionColor: playbookActionColor(actionText)
+  };
+}
+
+function refreshNetworkComparisonFromDashboard(data) {
+  const computed = data ? computeNetworkBaselineFromDashboard(data) : null;
+  networkComparisonBaseline = computed || defaultNetworkBaseline();
+  paintReferencePanel(networkComparisonBaseline);
+  const toggle = document.getElementById('disruption-toggle');
+  if (!toggle || !toggle.checked) {
+    paintProjectedPanel(networkComparisonBaseline);
+  } else {
+    paintProjectedPanel(applyDisruptionStress(networkComparisonBaseline));
+  }
+}
+
+function initNetworkComparisonDefaults() {
+  networkComparisonBaseline = defaultNetworkBaseline();
+  paintReferencePanel(networkComparisonBaseline);
+  paintProjectedPanel(networkComparisonBaseline);
+}
+function animateValue(el, target, formatter, duration = 800) {
+  if (!el) return;
+  el.classList.add('animating');
+  setTimeout(() => el.classList.remove('animating'), duration + 100);
+  el.textContent = formatter ? formatter(target) : target;
+}
+
+function setApiStatus(connected) {
+  apiConnected = connected;
+  const indicator = document.getElementById('api-status-indicator');
+  const text = document.getElementById('api-status-text');
+  if (connected) {
+    indicator.className = 'api-status connected';
+    text.textContent = 'Live Connected';
+  } else {
+    indicator.className = 'api-status disconnected';
+    text.textContent = 'Demo Mode';
+  }
+}
+
+// ============ NAV SCROLL ============
+window.addEventListener('scroll', () => {
+  document.getElementById('main-nav').classList.toggle('scrolled', window.scrollY > 50);
+});
+
+// ============ API FETCHER ============
+async function fetchAPI(path, options = {}) {
+  const { timeoutMs = 8000, ...fetchOpts } = options;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const resp = await fetch(API_BASE + path, { ...fetchOpts, signal: ctrl.signal });
+    if (!resp.ok) throw new Error(`API ${resp.status}`);
+    return resp.json();
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+// ============ FLOATING NETWORK CANVAS ============
+const canvas = document.getElementById('network-canvas');
+const ctx = canvas.getContext('2d');
+let nodes = [], mouseX = 0, mouseY = 0;
+const nodeTypes = ['supplier', 'warehouse', 'region', 'port'];
+const nodeColors = {
+  supplier: { base: 'rgba(255,122,89,0.55)', glow: 'rgba(255,122,89,0.8)' },
+  warehouse: { base: 'rgba(107,142,141,0.55)', glow: 'rgba(107,142,141,0.8)' },
+  region: { base: 'rgba(255,195,160,0.55)', glow: 'rgba(255,195,160,0.8)' },
+  port: { base: 'rgba(76,175,80,0.5)', glow: 'rgba(76,175,80,0.8)' }
+};
+
+function initNodes() {
+  const W = canvas.width, H = canvas.height;
+  nodes = Array.from({length: 35}, (_, i) => {
+    const type = nodeTypes[Math.floor(Math.random() * nodeTypes.length)];
+    return {
+      x: Math.random() * W, y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.35, vy: (Math.random() - 0.5) * 0.35,
+      r: 4 + Math.random() * 6,
+      type,
+      pulsePhase: Math.random() * Math.PI * 2,
+      pulseSpeed: 0.015 + Math.random() * 0.02,
+      risk: Math.random() > 0.85 ? 'high' : Math.random() > 0.75 ? 'medium' : 'normal',
+      depth: 0.3 + Math.random() * 0.7,
+      // route pulses
+      pulseProgress: 0,
+      pulseTarget: null
+    };
+  });
+  // Assign route pulse targets
+  nodes.forEach((n, i) => {
+    if (Math.random() > 0.5) {
+      const candidates = nodes.filter((_, j) => j !== i && distance(n, nodes[j]) < 260);
+      if (candidates.length) n.pulseTarget = candidates[Math.floor(Math.random() * candidates.length)];
+    }
+  });
+}
+
+function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+
+function resizeCanvas() {
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+  initNodes();
+}
+
+function drawNetwork(timestamp) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const W = canvas.width, H = canvas.height;
+
+  // Soft radial glow in center
+  const grad = ctx.createRadialGradient(W*0.55, H*0.45, 0, W*0.55, H*0.45, W*0.6);
+  grad.addColorStop(0, 'rgba(255,195,160,0.07)');
+  grad.addColorStop(1, 'rgba(255,248,243,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Parallax offset
+  const pxOff = (mouseX / W - 0.5) * 18;
+  const pyOff = (mouseY / H - 0.5) * 12;
+
+  // Draw edges
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const a = nodes[i], b = nodes[j];
+      const dist = distance(a, b);
+      if (dist > 280) continue;
+      const opacity = Math.max(0, (1 - dist / 280)) * 0.35 * Math.min(a.depth, b.depth);
+      ctx.beginPath();
+      ctx.moveTo(a.x + pxOff * a.depth, a.y + pyOff * a.depth);
+      ctx.lineTo(b.x + pxOff * b.depth, b.y + pyOff * b.depth);
+      ctx.strokeStyle = `rgba(255,122,89,${opacity})`;
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    }
+  }
+
+  // Draw nodes + pulses
+  nodes.forEach((n, ni) => {
+    const px = n.x + pxOff * n.depth;
+    const py = n.y + pyOff * n.depth;
+    n.pulsePhase += n.pulseSpeed;
+    const pulseMod = Math.sin(n.pulsePhase) * 0.5 + 0.5;
+    const depthAlpha = n.depth * 0.8;
+
+    // Risk glow
+    if (n.risk === 'high') {
+      const gGrad = ctx.createRadialGradient(px, py, 0, px, py, n.r * 3.5);
+      gGrad.addColorStop(0, `rgba(228,87,87,${0.25 * pulseMod})`);
+      gGrad.addColorStop(1, 'rgba(228,87,87,0)');
+      ctx.fillStyle = gGrad;
+      ctx.beginPath(); ctx.arc(px, py, n.r * 3.5, 0, Math.PI * 2); ctx.fill();
+    } else if (n.risk === 'medium') {
+      const gGrad = ctx.createRadialGradient(px, py, 0, px, py, n.r * 2.5);
+      gGrad.addColorStop(0, `rgba(246,196,69,${0.2 * pulseMod})`);
+      gGrad.addColorStop(1, 'rgba(246,196,69,0)');
+      ctx.fillStyle = gGrad;
+      ctx.beginPath(); ctx.arc(px, py, n.r * 2.5, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Node body
+    const colors = nodeColors[n.type];
+    const col = n.risk === 'high' ? 'rgba(228,87,87,0.7)' : n.risk === 'medium' ? 'rgba(246,196,69,0.7)' : colors.base;
+    ctx.beginPath();
+    ctx.arc(px, py, n.r * (1 + pulseMod * 0.12), 0, Math.PI * 2);
+    ctx.fillStyle = col.replace(/[\d.]+\)$/, `${depthAlpha * 0.9})`);
+    ctx.fill();
+    ctx.strokeStyle = `rgba(255,255,255,${depthAlpha * 0.5})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Move node
+    n.x += n.vx;
+    n.y += n.vy;
+    if (n.x < -30) n.x = W + 30;
+    if (n.x > W + 30) n.x = -30;
+    if (n.y < -30) n.y = H + 30;
+    if (n.y > H + 30) n.y = -30;
+
+    // Route pulses
+    if (n.pulseTarget) {
+      n.pulseProgress += 0.003 + Math.random() * 0.002;
+      if (n.pulseProgress > 1.2) n.pulseProgress = 0;
+      if (n.pulseProgress <= 1) {
+        const t = n.pulseProgress;
+        const tx = n.pulseTarget.x + pxOff * n.pulseTarget.depth;
+        const ty = n.pulseTarget.y + pyOff * n.pulseTarget.depth;
+        const bx = px + (tx - px) * t;
+        const by = py + (ty - py) * t;
+        const pulseAlpha = Math.sin(t * Math.PI) * 0.6;
+        ctx.beginPath();
+        ctx.arc(bx, by, 3, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,122,89,${pulseAlpha})`;
+        ctx.fill();
+      }
+    }
+  });
+
+  requestAnimationFrame(drawNetwork);
+}
+
+// Mouse parallax
+document.addEventListener('mousemove', e => {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+});
+
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+requestAnimationFrame(drawNetwork);
+
+// ============ SCROLL REVEAL ============
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.15 });
+
+document.querySelectorAll('.reveal, .feature-card').forEach(el => observer.observe(el));
+
+// ============ SIMULATOR LOGIC ============
+const demandSpike = document.getElementById('demand-spike');
+const demandSpikeVal = document.getElementById('demand-spike-val');
+
+demandSpike.addEventListener('input', () => {
+  const v = parseInt(demandSpike.value);
+  demandSpikeVal.textContent = (v >= 0 ? '+' : '') + v + '%';
+});
+
+function applySimulationToUI(impact, rec, demandChangePct) {
+  const costImpact = impact.cost_impact;
+  const stockoutProb = impact.stockout_probability;
+  const delayProb = impact.delay_probability;
+  const spike = demandChangePct != null ? demandChangePct : (impact.demand_change != null ? impact.demand_change : 0);
+
+  animateValue(document.getElementById('sim-cost'), costImpact, v => '₹' + formatNumber(Math.abs(v)));
+  animateValue(document.getElementById('sim-stockout'), stockoutProb, fmt);
+  animateValue(document.getElementById('sim-delay'), delayProb, fmt);
+  animateValue(document.getElementById('sim-demand'), spike, v => (v >= 0 ? '+' : '') + (v * 100).toFixed(0) + '%');
+
+  const costDelta = document.getElementById('sim-cost-delta');
+  costDelta.textContent = costImpact > 0 ? 'Cost pressure rising' : 'Stable vs baseline';
+  costDelta.className = 'kpi-delta ' + (costImpact > 10000 ? 'up' : 'down');
+
+  document.getElementById('sim-stockout-delta').textContent = stockoutProb > 0.5 ? 'Elevated exposure' : 'Within tolerance';
+  document.getElementById('sim-delay-delta').textContent = delayProb > 0.5 ? 'Logistics risk elevated' : 'Low logistics risk';
+
+  document.getElementById('sim-action').textContent = formatActionLabel(rec.action);
+  document.getElementById('sim-rationale').textContent = rec.rationale || '';
+}
+
+function runSimulationClientOnly(spike, sF, tD, wD) {
+  const baseState = {
+    predicted_demand: 500000,
+    current_inventory: 270000,
+    supplier_risk_score: 0.35,
+    disruption_signal: 0.3,
+    days_to_stockout: 16.2
+  };
+
+  let modState = { ...baseState };
+  modState.predicted_demand *= (1 + spike);
+  if (sF) modState.supplier_risk_score = Math.max(0.9, modState.supplier_risk_score);
+  if (tD) modState.disruption_signal = Math.max(0.8, modState.disruption_signal);
+  if (wD) {
+    modState.disruption_signal = Math.max(0.7, modState.disruption_signal);
+    modState.current_inventory *= 0.9;
+  }
+  modState.days_to_stockout = modState.current_inventory / Math.max(modState.predicted_demand / 30, 1);
+  modState.composite_risk = modState.supplier_risk_score * 0.3 + modState.disruption_signal * 0.4 + 0.3 * 0.3;
+
+  let stockoutBase = modState.days_to_stockout <= 3 ? 0.8 : modState.days_to_stockout <= 7 ? 0.5 : modState.days_to_stockout <= 14 ? 0.2 : 0.05;
+  const stockoutProb = Math.min(0.95, stockoutBase + modState.supplier_risk_score * 0.3 + modState.disruption_signal * 0.2);
+  const delayProb = Math.min(0.9, modState.supplier_risk_score * 0.7 + modState.disruption_signal * 0.6);
+
+  const demandChange = (modState.predicted_demand - baseState.predicted_demand) / baseState.predicted_demand;
+  const baseCost = baseState.predicted_demand * 0.5;
+  const costImpact = demandChange * baseCost + (stockoutProb * 1000 + delayProb * 500) * (modState.predicted_demand / 100000);
+
+  let action = 'do_nothing', rationale = 'Current conditions are within safe operating parameters.';
+  if (modState.days_to_stockout <= 3 || modState.current_inventory / modState.predicted_demand < 0.02) {
+    action = 'emergency_restock';
+    rationale = 'Critical inventory shortage detected. Immediate emergency restocking required to prevent stockout.';
+  } else if (modState.supplier_risk_score > 0.8) {
+    action = 'switch_supplier';
+    rationale = 'Severe supplier risk detected. Switch to backup supplier to maintain supply continuity.';
+  } else if (modState.disruption_signal > 0.8) {
+    action = 'reroute_shipment';
+    rationale = 'High disruption signal detected. Alternative logistics routes recommended to avoid delays.';
+  } else if (modState.days_to_stockout < 7 || modState.composite_risk > 0.5) {
+    action = 'reorder_stock';
+    rationale = 'Elevated risk conditions detected. Proactive stock reorder recommended.';
+  }
+
+  applySimulationToUI(
+    { cost_impact: costImpact, stockout_probability: stockoutProb, delay_probability: delayProb, demand_change: demandChange },
+    { action, rationale },
+    spike
+  );
+}
+
+async function runSimulation() {
+  const spike = parseInt(demandSpike.value, 10) / 100;
+  const sF = document.getElementById('supplier-failure').checked;
+  const tD = document.getElementById('transport-delay').checked;
+  const wD = document.getElementById('weather-disruption').checked;
+
+  const btn = document.getElementById('run-simulation');
+  btn.disabled = true;
+  btn.textContent = 'Running…';
+  btn.classList.add('running');
+
+  try {
+    const payload = {
+      demand_spike: spike,
+      supplier_failure: sF,
+      transport_delay: tD,
+      weather_disruption: wD,
+      inventory_adjustment: 0
+    };
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 12000);
+    const resp = await fetch(API_BASE + '/simulate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: ctrl.signal
+    });
+    clearTimeout(t);
+    if (!resp.ok) throw new Error('simulate ' + resp.status);
+    const data = await resp.json();
+    if (data.status !== 'success' || !data.impact_analysis || !data.recommendations) throw new Error('invalid simulate payload');
+    applySimulationToUI(data.impact_analysis, data.recommendations, spike);
+  } catch (e) {
+    console.warn('Simulation API unavailable, using client mirror:', e);
+    await new Promise(r => setTimeout(r, 400));
+    runSimulationClientOnly(spike, sF, tD, wD);
+  } finally {
+    btn.textContent = 'Run simulation again';
+    btn.classList.remove('running');
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('run-simulation').addEventListener('click', runSimulation);
+
+// ============ DISRUPTION TOGGLE (network state comparison) ============
+document.getElementById('disruption-toggle').addEventListener('change', function() {
+  const panel = document.getElementById('disruption-after');
+  const label = document.getElementById('disruption-after-label');
+  const base = networkComparisonBaseline || defaultNetworkBaseline();
+  if (this.checked) {
+    panel.classList.add('disrupted');
+    label.textContent = 'Stressed projection (disruption model)';
+    paintProjectedPanel(applyDisruptionStress(base));
+  } else {
+    panel.classList.remove('disrupted');
+    label.textContent = 'Projected network view';
+    paintProjectedPanel(base);
+  }
+});
+
+// ============ FORECAST CHART ============
+function initForecastChart(data) {
+  const ctx2d = document.getElementById('forecast-chart').getContext('2d');
+  const months = ['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+  const values = data || [480, 510, 495, 540, 560, 530, 580, 610, 595];
+  new Chart(ctx2d, {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [{
+        label: 'Predicted Demand',
+        data: values,
+        fill: true,
+        tension: 0.4,
+        borderColor: '#FF7A59',
+        borderWidth: 2.5,
+        backgroundColor: (context) => {
+          const gradient = context.chart.ctx.createLinearGradient(0, 0, 0, 220);
+          gradient.addColorStop(0, 'rgba(255,122,89,0.2)');
+          gradient.addColorStop(1, 'rgba(255,122,89,0)');
+          return gradient;
+        },
+        pointBackgroundColor: '#FF7A59',
+        pointRadius: 4,
+        pointHoverRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(26,26,46,0.9)',
+          titleColor: '#fff', bodyColor: 'rgba(255,255,255,0.7)',
+          cornerRadius: 8, padding: 12,
+          callbacks: {
+            label: ctx => ` ${ctx.parsed.y}K units`
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#9CA3AF', font: { size: 11 } } },
+        y: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { color: '#9CA3AF', font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+// ============ CONFIDENCE RING CHART ============
+let confidenceChart;
+function initConfidenceChart(confidence) {
+  const cCtx = document.getElementById('confidence-chart').getContext('2d');
+  if (confidenceChart) confidenceChart.destroy();
+  confidenceChart = new Chart(cCtx, {
+    type: 'doughnut',
+    data: {
+      datasets: [{
+        data: [confidence, 100 - confidence],
+        backgroundColor: ['#FF7A59', 'rgba(255,122,89,0.1)'],
+        borderWidth: 0,
+        circumference: 280,
+        rotation: -140,
+      }]
+    },
+    options: {
+      responsive: false, cutout: '80%',
+      plugins: { legend: { display: false }, tooltip: { enabled: false } }
+    }
+  });
+}
+
+// ============ MAP REGION COLORING & TOOLTIPS ============
+const riskColorMap = {
+  critical: '#E45757',
+  high: '#FF7A59',
+  medium: '#F6C445',
+  low: '#4CAF50'
+};
+
+function colorMapRegions(regionsData) {
+  if (!regionsData) return;
+  const regionMap = {
+    'North India': 'region-north',
+    'South India': 'region-south',
+    'East India': 'region-east',
+    'West India': 'region-west',
+    'Central India': 'region-central',
+    'Northeast India': 'region-northeast'
+  };
+  regionsData.forEach(r => {
+    const el = document.getElementById(regionMap[r.region]);
+    if (el) el.setAttribute('fill', riskColorMap[r.risk_level] || '#F6C445');
+  });
+}
+
+function initMapTooltips(regionsData) {
+  const tooltip = document.getElementById('map-tooltip');
+  const regionDataMap = {};
+  if (regionsData) regionsData.forEach(r => { regionDataMap[r.region] = r; });
+
+  document.querySelectorAll('.map-region').forEach(el => {
+    el.addEventListener('mouseenter', function(e) {
+      const rName = this.dataset.region;
+      const rData = regionDataMap[rName];
+      if (rData) {
+        tooltip.innerHTML = `<strong>${rName}</strong><br>Risk: ${(rData.risk_score * 100).toFixed(0)}% (${rData.risk_level.toUpperCase()})<br>Suppliers: ${rData.supplier_count}`;
+      } else {
+        tooltip.innerHTML = `<strong>${rName}</strong>`;
+      }
+      tooltip.style.opacity = '1';
+    });
+    el.addEventListener('mousemove', function(e) {
+      const rect = this.closest('.risk-map-container').getBoundingClientRect();
+      tooltip.style.left = (e.clientX - rect.left + 10) + 'px';
+      tooltip.style.top = (e.clientY - rect.top - 10) + 'px';
+    });
+    el.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; });
+  });
+}
+
+// ============ LOAD DASHBOARD DATA ============
+async function loadDashboard() {
+  try {
+    const data = await fetchAPI('/dashboard', { timeoutMs: 120000 });
+    setApiStatus(true);
+
+    const riskData = data.risk_heatmap;
+    const rec = data.recommendations;
+    const costAgg = data.cost_impact;
+
+    const demandEst = estimatedDemandFromDashboard(data) || 500000;
+    animateValue(document.getElementById('kpi-demand'), demandEst, formatNumber);
+
+    const avgRisk = averageRegionField(riskData && riskData.regions, 'risk_score');
+    const riskDisplay = avgRisk != null ? avgRisk : (riskData ? Math.min(1, riskData.high_risk_regions / 6) : 0.55);
+    animateValue(document.getElementById('kpi-risk'), riskDisplay, v => (v * 100).toFixed(0) + '%');
+
+    const costKpi = costAgg && costAgg.total_cost_change != null ? costAgg.total_cost_change : (rec && rec.cost_impact != null ? rec.cost_impact : 0);
+    animateValue(document.getElementById('kpi-cost'), costKpi, v => '₹' + formatNumber(Math.abs(v)));
+
+    const avgDisruption = averageRegionField(riskData && riskData.regions, 'disruption_signal');
+    const delayKpi = avgDisruption != null ? avgDisruption : 0.45;
+    animateValue(document.getElementById('kpi-delay'), delayKpi, fmt);
+
+    if (riskData && riskData.regions) colorMapRegions(riskData.regions);
+    initMapTooltips(riskData ? riskData.regions : null);
+
+    const baseSeries = [480, 510, 495, 540, 560, 530, 580, 610, 595];
+    const scale = demandEst / 500000;
+    initForecastChart(baseSeries.map(v => Math.round(v * scale)));
+
+    refreshNetworkComparisonFromDashboard(data);
+
+  } catch (err) {
+    console.warn('Dashboard API unavailable, using demo data:', err);
+    setApiStatus(false);
+    refreshNetworkComparisonFromDashboard(null);
+    // Demo mode
+    animateValue(document.getElementById('kpi-demand'), 524000, formatNumber);
+    animateValue(document.getElementById('kpi-risk'), 0.58, v => (v * 100).toFixed(0) + '%');
+    animateValue(document.getElementById('kpi-cost'), 87500, v => '₹' + formatNumber(v));
+    animateValue(document.getElementById('kpi-delay'), 0.42, fmt);
+    initForecastChart([465, 490, 512, 538, 561, 547, 582, 608, 595]);
+    initMapTooltips(null);
+  }
+}
+
+// ============ LOAD RECOMMENDATIONS ============
+async function loadRecommendations() {
+  try {
+    const data = await fetchAPI('/recommendations', { timeoutMs: 120000 });
+    document.getElementById('rec-action').textContent = formatActionLabel(data.action || 'reorder_stock');
+    document.getElementById('confidence-val').textContent = data.confidence.toFixed(0) + '%';
+    initConfidenceChart(data.confidence);
+
+    const exp = data.explanation || {};
+    document.getElementById('rec-rationale').textContent = exp.rationale || 'Place standard order to replenish inventory levels based on current demand forecast.';
+    document.getElementById('rec-explanation').textContent = exp.enhanced_explanation || exp.rationale || 'AI analysis indicates elevated risk conditions requiring proactive intervention.';
+
+    const rfList = document.getElementById('risk-factors-list');
+    rfList.innerHTML = '';
+    const factors = exp.risk_factors || ['High demand forecast relative to current inventory', 'Elevated supplier risk score'];
+    factors.forEach(f => {
+      const div = document.createElement('div');
+      div.className = 'risk-factor';
+      div.textContent = f;
+      rfList.appendChild(div);
+    });
+
+    const altList = document.getElementById('alternatives-list');
+    altList.innerHTML = '';
+    (data.alternatives || []).slice(0, 3).forEach(a => {
+      const div = document.createElement('div');
+      div.style.cssText = 'padding:6px 12px; background:rgba(255,122,89,0.07); border-radius:6px; font-size:0.8rem; color:#6B7280;';
+      div.textContent = String(a).replaceAll('_', ' ');
+      altList.appendChild(div);
+    });
+
+    document.getElementById('rec-time').textContent = data.implementation_time || '3–5 days';
+
+  } catch (err) {
+    console.warn('Recommendations API unavailable, using demo data:', err);
+    document.getElementById('rec-action').textContent = 'REORDER STOCK';
+    document.getElementById('confidence-val').textContent = '78%';
+    initConfidenceChart(78);
+    document.getElementById('rec-rationale').textContent = 'Place standard order to replenish inventory levels based on current demand forecast.';
+    document.getElementById('rec-explanation').textContent = 'Inventory coverage is at 5 days against a 14-day safety threshold. Demand forecast shows 12% increase next month. Reorder stock now to prevent stockout.';
+    const rfList = document.getElementById('risk-factors-list');
+    rfList.innerHTML = `
+      <div class="risk-factor">High supplier risk (65%) detected</div>
+      <div class="risk-factor">Low inventory coverage — 5.0 days</div>
+      <div class="risk-factor">Elevated disruption signal (45%)</div>
+    `;
+    document.getElementById('alternatives-list').innerHTML = `
+      <div style="padding:6px 12px; background:rgba(255,122,89,0.07); border-radius:6px; font-size:0.8rem; color:#6B7280;">switch supplier</div>
+      <div style="padding:6px 12px; background:rgba(255,122,89,0.07); border-radius:6px; font-size:0.8rem; color:#6B7280;">reroute shipment</div>
+    `;
+    document.getElementById('rec-time').textContent = '3–5 days';
+  }
+}
+
+// ============ LOAD ALERTS ============
+async function loadAlerts() {
+  try {
+    const data = await fetchAPI('/risk-alerts');
+    document.getElementById('count-critical').textContent = data.critical_alerts || 0;
+    document.getElementById('count-high').textContent = data.high_alerts || 0;
+    document.getElementById('count-medium').textContent = data.medium_alerts || 0;
+    renderAlerts(data.alerts || []);
+  } catch (err) {
+    console.warn('Alerts API unavailable, using demo data:', err);
+    document.getElementById('count-critical').textContent = '2';
+    document.getElementById('count-high').textContent = '3';
+    document.getElementById('count-medium').textContent = '4';
+    renderAlerts([
+      { alert_id: '1', title: 'Stockout Imminent Alert', message: 'Stockout expected in 4.2 days for primary warehouse. Emergency restocking required.', severity: 'critical', alert_type: 'stockout_imminent', region: 'North India', created_at: new Date(Date.now() - 900000).toISOString() },
+      { alert_id: '2', title: 'Weather Disruption Alert', message: 'Heavy rainfall expected across Maharashtra affecting logistics routes for the next 72 hours.', severity: 'high', alert_type: 'weather_disruption', region: 'West India', created_at: new Date(Date.now() - 1800000).toISOString() },
+      { alert_id: '3', title: 'Supplier Risk Alert', message: 'Supplier risk score (72%) exceeds threshold. Primary supplier SUP001 showing instability signals.', severity: 'high', alert_type: 'supplier_risk_high', region: 'All Regions', created_at: new Date(Date.now() - 3600000).toISOString() },
+      { alert_id: '4', title: 'Transport Delay Alert', message: 'Major highway closure reported on NH-44 in East India affecting 3 active shipments.', severity: 'medium', alert_type: 'transport_delay', region: 'East India', created_at: new Date(Date.now() - 7200000).toISOString() },
+      { alert_id: '5', title: 'Low Inventory Alert', message: 'Inventory ratio at 18%, approaching low threshold of 20% for warehouse in South India.', severity: 'medium', alert_type: 'inventory_low', region: 'South India', created_at: new Date(Date.now() - 10800000).toISOString() },
+    ]);
+  }
+}
+
+function renderAlerts(alerts) {
+  const list = document.getElementById('alerts-list');
+  list.innerHTML = '';
+  if (!alerts.length) {
+    list.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-muted);">No active alerts</div>';
+    return;
+  }
+  alerts.forEach(a => {
+    const timeAgo = getTimeAgo(new Date(a.created_at));
+    const div = document.createElement('div');
+    div.className = 'alert-item';
+    div.dataset.severity = a.severity;
+    div.innerHTML = `
+      <div class="alert-pulse ${a.severity}"></div>
+      <div class="alert-body" style="flex:1">
+        <div class="alert-title">${a.title}</div>
+        <div class="alert-msg">${a.message}</div>
+        ${a.region ? `<div class="alert-region">Region: ${a.region}</div>` : ''}
+      </div>
+      <div class="alert-meta">
+        <div class="severity-tag ${a.severity}">${a.severity.toUpperCase()}</div>
+        <div class="alert-time">${timeAgo}</div>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function getTimeAgo(date) {
+  const diff = Date.now() - date.getTime();
+  if (diff < 60000) return 'Just now';
+  if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+  return Math.floor(diff / 86400000) + 'd ago';
+}
+
+// ============ INITIALIZE ALL ============
+async function init() {
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 4000);
+    await fetch(API_ORIGIN + '/health', { signal: ctrl.signal });
+    clearTimeout(t);
+  } catch (e) {
+    console.log('API not available, running in demo mode');
+  }
+
+  // Load all sections concurrently
+  await Promise.allSettled([
+    loadDashboard(),
+    loadRecommendations(),
+    loadAlerts()
+  ]);
+}
+
+// Run on load
+window.addEventListener('DOMContentLoaded', () => {
+  initNetworkComparisonDefaults();
+  init();
+});
+
+// Auto-refresh every 5 minutes
+setInterval(() => {
+  loadAlerts();
+  loadRecommendations();
+}, 300000);
+</script>
+</body>
+</html>

@@ -7,6 +7,7 @@ Provides live risk alerts with NewsData.io integration.
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 from datetime import datetime
+import asyncio
 import logging
 
 from ..models import RiskAlertsResponse
@@ -31,13 +32,14 @@ async def get_risk_alerts():
     """
     try:
         logger.info("Risk alerts endpoint called")
-        
-        # Get active alerts
-        alerts_response = alert_service.get_active_alerts()
-        
-        logger.info(f"Risk alerts generated: {alerts_response.total_alerts} total, {alerts_response.critical_alerts} critical")
+
+        alerts_response = await asyncio.to_thread(alert_service.get_active_alerts)
+
+        logger.info(
+            f"Risk alerts generated: {alerts_response.total_alerts} total, {alerts_response.critical_alerts} critical"
+        )
         return alerts_response
-        
+
     except Exception as e:
         logger.error(f"Error in risk alerts endpoint: {e}")
         raise HTTPException(status_code=500, detail=f"Error generating risk alerts: {str(e)}")
